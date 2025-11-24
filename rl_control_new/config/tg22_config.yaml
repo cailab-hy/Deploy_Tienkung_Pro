@@ -35,7 +35,6 @@ joint_kd_p:
 
 
 joystick:
-  initial_height: 0.90
   forward_command_offset: 0.0
   lateral_command_offset: 0.0
   rotation_command_offset: 0.0
