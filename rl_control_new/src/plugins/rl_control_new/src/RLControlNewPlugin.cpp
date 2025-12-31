@@ -1,10 +1,10 @@
 /**
  * @file RLControlNewPlugin.cpp
- * @brief ROS2版本的humanoid rl plugin
+ * @brief ROS2版本的humanoid rl plugin (ROS2 version of the humanoid RL plugin)
  * @version 2.0
  * @date 2025-09-17
  *
- * @修改记录1: zyj 2025-09-17 适配天工dex
+ * @修改记录1: zyj 2025-09-17 适配天工dex (Revision log 1: zyj, 2025-09-17 — adapted for Tiangong Dex)
  *
  */
 
@@ -26,13 +26,13 @@
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include <ament_index_cpp/get_package_share_directory.hpp>
 
-#include "funcSPTrans.h" // 串并联转换
+#include "funcSPTrans.h" // 串并联转换 (Serial-parallel conversion)
 
 using namespace broccoli::core;
 
 namespace rl_control_new {
 
-// 带 NodeOptions 的构造函数（用于可组合节点）
+// 带 NodeOptions 的构造函数（用于可组合节点）(Constructor with NodeOptions (for composable nodes)）
 RLControlNewPlugin::RLControlNewPlugin(const rclcpp::NodeOptions & options) 
     : rclcpp::Node("rl_control_new_plugin", options) {
     onInit();
@@ -69,8 +69,9 @@ void RLControlNewPlugin::onInit()
     }
 
     idMap.bodyCanIdMapInit();
-    ////// 腿12 + 手臂8 + 浮动基6 = 26 //////
-    int whole_joint_num = 26;
+    ////// (Tienkung Lite) 腿12 + 手臂8 + 浮动基6 = 26 ////// (Leg 12 + Arm 8 + Floating base 6 = 26) //////
+    ////// (Tienkung Pro) Leg 12 + Arm 14 + Head 3 + Waist 1 + Floating base 6 = 36 //////
+    int whole_joint_num = 36;
     pos_fed_midVec = Eigen::VectorXd::Zero(whole_joint_num);
     vel_fed_midVec = Eigen::VectorXd::Zero(whole_joint_num);
     tau_fed_midVec = Eigen::VectorXd::Zero(whole_joint_num);
@@ -82,7 +83,10 @@ void RLControlNewPlugin::onInit()
 
     pubLegMotorCmd = this->create_publisher<bodyctrl_msgs::msg::CmdMotorCtrl>("/leg/cmd_ctrl", 100);
     pubArmMotorCmd = this->create_publisher<bodyctrl_msgs::msg::CmdMotorCtrl>("/arm/cmd_ctrl", 100);
-    //腰部和头部归零
+    pubHeadMotorCmd = this->create_publisher<bodyctrl_msgs::msg::CmdMotorCtrl>("/head/cmd_ctrl", 100);
+    pubWaistMotorCmd = this->create_publisher<bodyctrl_msgs::msg::CmdMotorCtrl>("/waist/cmd_ctrl", 100);
+
+    //腰部和头部归零 (Reset waist and head)
     waists_cmd_pub_ = this->create_publisher<bodyctrl_msgs::msg::CmdSetMotorPosition>("/waist/cmd_pos", 1);
 
     subLegState = this->create_subscription<bodyctrl_msgs::msg::MotorStatusMsg>(
@@ -91,6 +95,12 @@ void RLControlNewPlugin::onInit()
     subArmState = this->create_subscription<bodyctrl_msgs::msg::MotorStatusMsg>(
         "/arm/status", 100,
         std::bind(&RLControlNewPlugin::ArmMotorStatusMsg, this, std::placeholders::_1));
+    subHeadState = this->create_subscription<bodyctrl_msgs::msg::MotorStatusMsg>(
+        "/head/status", 100,
+        std::bind(&RLControlNewPlugin::HeadMotorStatusMsg, this, std::placeholders::_1));
+    subWaistState = this->create_subscription<bodyctrl_msgs::msg::MotorStatusMsg>(
+        "/waist/status", 100,
+        std::bind(&RLControlNewPlugin::WaistMotorStatusMsg, this, std::placeholders::_1));
     subImuXsens = this->create_subscription<bodyctrl_msgs::msg::Imu>(
         "/imu/status", 100,
         std::bind(&RLControlNewPlugin::OnXsensImuStatusMsg, this, std::placeholders::_1));
@@ -135,12 +145,15 @@ void RLControlNewPlugin::onInit()
     Q_a_last = Eigen::VectorXd::Zero(motor_num);
     Qdot_a_last = Eigen::VectorXd::Zero(motor_num);
     Tor_a_last = Eigen::VectorXd::Zero(motor_num);
-    ct_scale_midVec.head(12) << ct_scale.head(12);
+    ct_scale_midVec.head(12) << ct_scale.head(12); // leg
+    ct_scale_midVec.segment(12, 14) << ct_scale.segment(12, 14);    // arm (14 joints)
+    ct_scale_midVec.segment(26, 3) << ct_scale.segment(26, 3);      // head (3 joints)
+    ct_scale_midVec(29) = ct_scale(29);                             // waist (1 joint)
 
     zero_pos = Eigen::VectorXd::Zero(motor_num);
     std::stringstream ss;
 
-    // 零位调整
+    // 零位调整 (Zero position adjustment)
     if (config_["zero_pos_offset"])
     {
         for (int32_t i = 0; i < motor_num; ++i)
@@ -151,7 +164,7 @@ void RLControlNewPlugin::onInit()
     }
     if (config_["xsense_data_roll_offset"])
     {
-        // 日志输出在调试时有用，但在正常运行中可以省略
+        // 日志输出在调试时有用，但在正常运行中可以省略 (Log output is useful during debugging, but can be omitted during normal operation)
     }
 
     init_pos = Eigen::VectorXd::Zero(motor_num);
@@ -167,7 +180,7 @@ void RLControlNewPlugin::onInit()
         .detach();
 }
 
-// 混合模式测试
+// 混合模式测试 (Hybrid mode test)
 void RLControlNewPlugin::rlControl()
 {
     // set sched-strategy
@@ -190,6 +203,7 @@ void RLControlNewPlugin::rlControl()
 
     // robot FSM init
     RobotFSM *robot_fsm = get_robot_FSM(robot_data);
+
     // robot_interface init
     RobotInterface *robot_interface = get_robot_interface();
     robot_interface->Init();
@@ -208,7 +222,7 @@ void RLControlNewPlugin::rlControl()
     while (queueLegMotorState.empty() || queueArmMotorState.empty())
     {
         RCLCPP_WARN(this->get_logger(), "[RobotFSM] queue is empty");
-        std::this_thread::sleep_for(std::chrono::milliseconds(10)); // 睡眠10毫秒(0.01秒)
+        std::this_thread::sleep_for(std::chrono::milliseconds(10)); // 睡眠10毫秒(0.01秒) (Sleep for 10 milliseconds (0.01 seconds))
     }
     while (!queueLegMotorState.empty())
     {
@@ -226,6 +240,32 @@ void RLControlNewPlugin::rlControl()
     while (!queueArmMotorState.empty())
     {
         auto msg = queueArmMotorState.pop();
+        for (auto &one : msg->status)
+        {
+            int index = idMap.getIndexById(one.name);
+            pos_fed_midVec(index) = one.pos;
+            vel_fed_midVec(index) = one.speed;
+            tau_fed_midVec(index) = one.current * ct_scale_midVec(index);
+            temperature_midVec(index) = one.temperature;
+        }
+    }
+
+    while (!queueHeadMotorState.empty())
+    {
+        auto msg = queueHeadMotorState.pop();
+        for (auto &one : msg->status)
+        {
+            int index = idMap.getIndexById(one.name);
+            pos_fed_midVec(index) = one.pos;
+            vel_fed_midVec(index) = one.speed;
+            tau_fed_midVec(index) = one.current * ct_scale_midVec(index);
+            temperature_midVec(index) = one.temperature;
+        }
+    }
+
+    while (!queueWaistMotorState.empty())
+    {
+        auto msg = queueWaistMotorState.pop();
         for (auto &one : msg->status)
         {
             int index = idMap.getIndexById(one.name);
@@ -312,7 +352,7 @@ void RLControlNewPlugin::rlControl()
 
         if (std::abs(pitch) >= 0.8 || std::abs(roll) >= 0.8 ||
             gyro_norm > 5.0) {
-            // 日志输出在调试时有用，但在正常运行中可以省略
+            // 日志输出在调试时有用，但在正常运行中可以省略 (Log output is useful during debugging, but can be omitted during normal operation)
             // std::cout << "[IMU] Pitch/Roll/AngularVel 超限，进入STOP" << std::endl;
         }
 
@@ -320,7 +360,7 @@ void RLControlNewPlugin::rlControl()
             auto msg = queueJoyCmd.pop();
             // set joy cmd buf
             if (msg->axes.size() == 12){
-                //云卓
+                //云卓 (YunZhuo)
                 xbox_map.a = msg->axes[8];
                 xbox_map.b = msg->axes[9];
                 xbox_map.c = msg->axes[10];
@@ -362,7 +402,7 @@ void RLControlNewPlugin::rlControl()
         {
             if (fabs(Q_a(i) - Q_a_last(i)) > pi)
             {
-                // 错误处理：关节角度跳变过大
+                // 错误处理：关节角度跳变过大 (Error handling: joint angle jumps too large)
                 Q_a(i) = Q_a_last(i);
                 Qdot_a(i) = Qdot_a_last(i);
                 Tor_a(i) = Tor_a_last(i);
@@ -382,20 +422,20 @@ void RLControlNewPlugin::rlControl()
         }
 
         if (!simulation){
-            // 并转串
-            // 提取左右脚两个踝关节
+            // 并转串 (Parallel to serial conversion)
+            // 提取左右脚两个踝关节 (Extract the two ankle joints of the left and right legs)
             q_a_p << q_a.segment(4, 2), q_a.segment(10, 2);
             qdot_a_p << qdot_a.segment(4, 2), qdot_a.segment(10, 2);
             tor_a_p << tor_a.segment(4, 2), tor_a.segment(10, 2);
 
-            // 计算并转串
+            // 计算并转串 (Calculate parallel to serial)
             funS2P->setPEst(q_a_p, qdot_a_p, tor_a_p);
             funS2P->calcFK();
             funS2P->calcIK();
-            // 获取结果
+            // 获取结果 (Obtain results)
             funS2P->getSState(q_a_s, qdot_a_s, tor_a_s);
 
-            // 结果覆盖
+            // 结果覆盖 (Overwrite results)
             q_a.segment(4, 2) = q_a_s.head(2);
             q_a.segment(10, 2) = q_a_s.tail(2);
             qdot_a.segment(4, 2) = qdot_a_s.head(2);
@@ -411,7 +451,7 @@ void RLControlNewPlugin::rlControl()
             xsense_data(2) += offset;
         }
 
-        // get state（whole_joint_num个从后取motor_num个）
+        // get state（whole_joint_num个从后取motor_num个）(get state (take the last motor_num of whole_joint_num)）
         robot_data.q_a_.tail(motor_num) = q_a;
         robot_data.q_dot_a_.tail(motor_num) = qdot_a;
         robot_data.tau_a_.tail(motor_num) = tor_a;
@@ -428,7 +468,7 @@ void RLControlNewPlugin::rlControl()
 
         if (robot_fsm->getCurrentState() == FSMStateName::STOP && flag_.fsm_state_command == "gotoZero")
         {
-            // 腰部回零
+            // 腰部回零 (Waist return to zero)
             bodyctrl_msgs::msg::CmdSetMotorPosition waist_msg;
             for (int i = 0; i < 1; i++)
             {
@@ -460,19 +500,19 @@ void RLControlNewPlugin::rlControl()
 
         if (!simulation)
         {
-            // 串转并
-            // 取踝关节两关节
+            // 串转并 (Serial to parallel conversion)
+            // 取踝关节两关节 (Extract the two ankle joints)
             q_d_s << q_d.segment(4, 2), q_d.segment(10, 2);
             qdot_d_s << qdot_d.segment(4, 2), qdot_d.segment(10, 2);
             tor_d_s << tor_d.segment(4, 2), tor_d.segment(10, 2);
 
-            // 转换
+            // 转换 (Conversion)
             funS2P->setSDes(q_d_s, qdot_d_s, tor_d_s);
             funS2P->calcJointPosRef();
             funS2P->calcJointTorDes();
             funS2P->getPDes(q_d_p, qdot_d_p, tor_d_p);
 
-            // 覆盖原来的值
+            // 覆盖原来的值 (Overwrite the original values)
             q_d.segment(4, 2) = q_d_p.head(2);
             q_d.segment(10, 2) = q_d_p.tail(2);
             qdot_d.segment(4, 2) = qdot_d_p.head(2);
@@ -501,6 +541,16 @@ void RLControlNewPlugin::rlControl()
         tau_cmd_midVec.head(motor_num) << Tor_d.head(motor_num);
 
         // Send Command motorctrl mode
+        // Leg control
+        """
+        // Leg joint mapping (0-11) 
+        std::vector<int> legIds = {51, 52, 53, 54, 55, 56,  // 左腿 (left leg)
+                                   61, 62, 63, 64, 65, 66}; // 右腿 (right leg)
+        std::vector<std::string> legNames = {
+            l_hip_roll, l_hip_pitch, l_hip_yaw, l_knee, l_ankle_pitch, l_ankle_roll,
+            r_hip_roll, r_hip_pitch, r_hip_yaw, r_knee, r_ankle_pitch, r_ankle_roll
+        };
+        """
         bodyctrl_msgs::msg::CmdMotorCtrl leg_msg;
         leg_msg.header.stamp = this->get_clock()->now();
 
@@ -518,11 +568,24 @@ void RLControlNewPlugin::rlControl()
         pubLegMotorCmd->publish(leg_msg);
 
         // Arm control
+        """
+        // Arm joint mapping for Tienkung Pro | Add wrist rpy joints (12-25)
+        std::vector<int> armIds = {11, 12, 13, 14, 15, 16, 17   // 左臂 (left arm)
+                                   21, 22, 23, 24, 25, 26, 27}; // 右臂 (right arm)
+        std::vector<std::string> armNames = {
+            l_shoulder_pitch, l_shoulder_roll, l_shoulder_yaw, l_elbow, l_wrist_yaw, l_wrist_pitch, l_wrist_roll,
+            r_shoulder_pitch, r_shoulder_roll, r_shoulder_yaw, r_elbow, r_wrist_yaw, r_wrist_pitch, r_wrist_roll,
+        };
+        """
         bodyctrl_msgs::msg::CmdMotorCtrl arm_msg;
         arm_msg.header.stamp = this->get_clock()->now();
 
-        // 发送手臂关节命令 (索引12-19，对应8个关节)
-        std::vector<int> arm_indices = {12, 13, 14, 15, 16, 17, 18, 19};
+        // Tienkung Lite
+        // 发送手臂关节命令 (索引12-19，对应8个关节) (Send arm joint commands (indices 12-19, corresponding to 8 joints))
+        // std::vector<int> arm_indices = {12, 13, 14, 15, 16, 17, 18, 19};
+
+        // Tienkung Pro
+        std::vector<int> arm_indices = {12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25};
         for (int index : arm_indices)
         {
             bodyctrl_msgs::msg::MotorCtrl cmd_arm;
@@ -536,6 +599,42 @@ void RLControlNewPlugin::rlControl()
         }
 
         pubArmMotorCmd->publish(arm_msg);
+
+        // Head control
+        bodyctrl_msgs::msg::CmdMotorCtrl head_msg;
+        head_msg.header.stamp = this->get_clock()->now();
+
+        std::vector<int> head_indices = {26, 27, 28}; // 头部关节索引 (Head joint indices)
+        for (int index : head_indices)
+        {
+            bodyctrl_msgs::msg::MotorCtrl cmd_head;
+            cmd_head.name = idMap.getIdByIndex(index);
+            cmd_head.kp = robot_data.joint_kp_p_(index);
+            cmd_head.kd = robot_data.joint_kd_p_(index);
+            cmd_head.pos = pos_cmd_midVec(index);
+            cmd_head.spd = vel_cmd_midVec(index);
+            cmd_head.tor = tau_cmd_midVec(index);
+            head_msg.cmds.push_back(cmd_head);
+        }
+
+        pubHeadMotorCmd->publish(head_msg);
+
+        // Waist control
+        bodyctrl_msgs::msg::CmdMotorCtrl waist_msg;
+        waist_msg.header.stamp = this->get_clock()->now();
+
+        std::vector<int> waist_indices = {29}; // 腰部关节索引 (Waist joint indices)
+        for (int index : waist_indices)
+        {
+            bodyctrl_msgs::msg::MotorCtrl cmd_waist;
+            cmd_waist.name = idMap.getIdByIndex(index);
+            cmd_waist.kp = robot_data.joint_kp_p_(index);
+            cmd_waist.kd = robot_data.joint_kd_p_(index);
+            cmd_waist.pos = pos_cmd_midVec(index);
+            cmd_waist.spd = vel_cmd_midVec(index);
+            cmd_waist.tor = tau_cmd_midVec(index);
+            waist_msg.cmds.push_back(cmd_waist);
+        }
 
         timer3 = timer.currentTime() - start_time - timer1 - timer2;
         sleep2Time = start_time + period;
@@ -562,6 +661,18 @@ void RLControlNewPlugin::ArmMotorStatusMsg(const bodyctrl_msgs::msg::MotorStatus
     queueArmMotorState.push(wrapper);
 }
 
+void RLControlNewPlugin::HeadMotorStatusMsg(const bodyctrl_msgs::msg::MotorStatusMsg::SharedPtr msg)
+{
+    auto wrapper = msg;
+    queueHeadMotorState.push(wrapper);
+}
+
+void RLControlNewPlugin::WaistMotorStatusMsg(const bodyctrl_msgs::msg::MotorStatusMsg::SharedPtr msg)
+{
+    auto wrapper = msg;
+    queueWaistMotorState.push(wrapper);
+}
+
 void RLControlNewPlugin::OnXsensImuStatusMsg(const bodyctrl_msgs::msg::Imu::SharedPtr msg)
 {
     auto wrapper = msg;
@@ -581,5 +692,5 @@ void RLControlNewPlugin::printXboxFlag(const xbox_flag& flag) {
   }
 } // namespace rl_control_new
 
-// 注册可组合节点
+// 注册可组合节点 (Register composable node)
 RCLCPP_COMPONENTS_REGISTER_NODE(rl_control_new::RLControlNewPlugin)

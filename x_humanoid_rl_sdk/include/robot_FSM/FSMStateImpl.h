@@ -48,7 +48,8 @@ class StateMLP : public FSMState {
   double timer = 0.;
 
   Eigen::VectorXd input_data_mlp;
-  double action_num = 20;
+  // double action_num = 20;  // Tienkung Lite
+  double action_num = 30;     // Tienkung Pro
   Eigen::VectorXd output_data_mlp = Eigen::VectorXd::Zero(action_num);
   Eigen::VectorXd last_action_d = Eigen::VectorXd::Zero(action_num);
   Eigen::VectorXd last_action_dot_d = Eigen::VectorXd::Zero(action_num);
@@ -94,7 +95,6 @@ class StateMLP : public FSMState {
 
   double trans_time_lower = 0.3; 
   double trans_time_upper = 0.6; 
-
 
   double left_phase;
   double right_phase;

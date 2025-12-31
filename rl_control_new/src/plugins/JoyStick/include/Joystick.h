@@ -7,7 +7,7 @@
 #include <std_msgs/msg/int32.hpp>
 #include <sensor_msgs/msg/joy.hpp>
 #include <atomic>
-// 通用结构体定义
+// 通用结构体定义 (General struct definitions)
 struct xbox_flag
 {
   bool is_disable = false;
@@ -21,7 +21,7 @@ struct xbox_flag
 };
 
 
-// 云卓T12手柄模式
+// 云卓T12手柄模式 (Xbox T12 controller mode)
 
 typedef struct xbox_map
 {
@@ -52,7 +52,7 @@ public:
 private:
   std::mutex data_mutex;
   std::shared_ptr<rclcpp::Node> nh_;
-  rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr arm_box_control_pub; // 添加发布器成员变量
+  rclcpp::Publisher<std_msgs::msg::Int32>::SharedPtr arm_box_control_pub; // 添加发布器成员变量 (Add publisher member variable)
 
   // ros::Subscriber sub_;
   xbox_map xbox_map_;

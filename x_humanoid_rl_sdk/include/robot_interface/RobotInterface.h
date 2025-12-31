@@ -14,18 +14,30 @@
 #include <Eigen/Dense>
 
 struct RobotData {
-  // floating base xyz rpy (6) + joints (20)
+  // (Tienkung Lite) 26 = floating base xyz rpy (6) + joints (20)
+  // (Tienkung Pro) 36 = floating base xyz rpy (6) + joints (30)
+  
+  // Eigen::VectorXd q_a_ = Eigen::VectorXd::Zero(26);
+  // Eigen::VectorXd q_dot_a_ = Eigen::VectorXd::Zero(26);
+  // Eigen::VectorXd tau_a_ = Eigen::VectorXd::Zero(26);
 
-  Eigen::VectorXd q_a_ = Eigen::VectorXd::Zero(26);
-  Eigen::VectorXd q_dot_a_ = Eigen::VectorXd::Zero(26);
-  Eigen::VectorXd tau_a_ = Eigen::VectorXd::Zero(26);
+  Eigen::VectorXd q_a_ = Eigen::VectorXd::Zero(36);
+  Eigen::VectorXd q_dot_a_ = Eigen::VectorXd::Zero(36);
+  Eigen::VectorXd tau_a_ = Eigen::VectorXd::Zero(36);
 
-  Eigen::VectorXd q_d_ = Eigen::VectorXd::Zero(26);
-  Eigen::VectorXd q_dot_d_ = Eigen::VectorXd::Zero(26);
-  Eigen::VectorXd tau_d_ = Eigen::VectorXd::Zero(26);
+  // Eigen::VectorXd q_d_ = Eigen::VectorXd::Zero(26);
+  // Eigen::VectorXd q_dot_d_ = Eigen::VectorXd::Zero(26);
+  // Eigen::VectorXd tau_d_ = Eigen::VectorXd::Zero(26);
 
-  Eigen::VectorXd joint_kp_p_ = Eigen::VectorXd::Zero(20);
-  Eigen::VectorXd joint_kd_p_ = Eigen::VectorXd::Zero(20);
+  Eigen::VectorXd q_d_ = Eigen::VectorXd::Zero(36);
+  Eigen::VectorXd q_dot_d_ = Eigen::VectorXd::Zero(36);
+  Eigen::VectorXd tau_d_ = Eigen::VectorXd::Zero(36);
+
+  // Eigen::VectorXd joint_kp_p_ = Eigen::VectorXd::Zero(20);
+  // Eigen::VectorXd joint_kd_p_ = Eigen::VectorXd::Zero(20);
+
+  Eigen::VectorXd joint_kp_p_ = Eigen::VectorXd::Zero(30);
+  Eigen::VectorXd joint_kd_p_ = Eigen::VectorXd::Zero(30);
 
   Eigen::VectorXd imu_data_ = Eigen::VectorXd::Zero(9); 
   double gait_a = 0.0;

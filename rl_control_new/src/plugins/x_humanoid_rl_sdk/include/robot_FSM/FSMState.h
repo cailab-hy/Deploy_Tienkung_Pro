@@ -31,9 +31,10 @@ public:
   FSMStateName current_state_name_;
 
 protected:
-  double dt_ = 0.0025;
-  int freq_ratio_ = 8;
-  int joint_num_ = 20;  
+  double dt_ = 0.0025;    // 1/0.0025 = 400Hz
+  int freq_ratio_ = 8;    // ??? 400Hz/50Hz = 8  
+  // int joint_num_ = 20; // Tienkung Lite 
+  int joint_num_ = 30;    // Tienkung Pro
   
   RobotData *robot_data_;
 };
