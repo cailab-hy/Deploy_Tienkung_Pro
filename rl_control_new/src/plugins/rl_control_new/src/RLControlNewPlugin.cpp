@@ -62,7 +62,7 @@ bool RLControlNewPlugin::LoadConfig(const std::string &_config_file)
 void RLControlNewPlugin::onInit()
 {
     std::string pkg_path = ament_index_cpp::get_package_share_directory("rl_control_new");
-    _config_file = pkg_path + "/config/tg22_config.yaml";
+    _config_file = pkg_path + "/config/tg30_config.yaml";
     if (!LoadConfig(_config_file))
     {
         std::cout << "load config file error: " << _config_file << std::endl;
@@ -218,10 +218,15 @@ void RLControlNewPlugin::rlControl()
     timespec sleep2Time_spec;
     double timeFSM = 0.0;
     Time timer1, timer2, timer3, total_time;
-
-    while (queueLegMotorState.empty() || queueArmMotorState.empty())
+    while (queueLegMotorState.empty() || queueArmMotorState.empty() )
     {
-        RCLCPP_WARN(this->get_logger(), "[RobotFSM] queue is empty");
+        RCLCPP_WARN(this->get_logger(), "[RobotFSM] queue{arm or leg} is empty");
+        std::this_thread::sleep_for(std::chrono::milliseconds(10)); // 睡眠10毫秒(0.01秒) (Sleep for 10 milliseconds (0.01 seconds))
+    }
+
+    while (queueHeadMotorState.empty()|| queueWaistMotorState.empty())
+    {
+        RCLCPP_WARN(this->get_logger(), "[RobotFSM] queue{head or waist} is empty");
         std::this_thread::sleep_for(std::chrono::milliseconds(10)); // 睡眠10毫秒(0.01秒) (Sleep for 10 milliseconds (0.01 seconds))
     }
     while (!queueLegMotorState.empty())
@@ -236,9 +241,8 @@ void RLControlNewPlugin::rlControl()
             temperature_midVec(index) = one.temperature;
         }
     }
-
     while (!queueArmMotorState.empty())
-    {
+    {   
         auto msg = queueArmMotorState.pop();
         for (auto &one : msg->status)
         {
@@ -313,6 +317,27 @@ void RLControlNewPlugin::rlControl()
                 temperature_midVec(index) = one.temperature;
             }
         }
+        while (!queueWaistMotorState.empty()) {
+            auto msg = queueWaistMotorState.pop();
+            for (auto &one : msg->status) {
+                int index = idMap.getIndexById(one.name);
+                pos_fed_midVec(index) = one.pos;
+                vel_fed_midVec(index) = one.speed;
+                tau_fed_midVec(index) = one.current * ct_scale_midVec(index);
+                temperature_midVec(index) = one.temperature;
+            }
+        }
+
+        while (!queueHeadMotorState.empty()) {
+            auto msg = queueHeadMotorState.pop();
+            for (auto &one : msg->status) {
+                int index = idMap.getIndexById(one.name);
+                pos_fed_midVec(index) = one.pos;
+                vel_fed_midVec(index) = one.speed;
+                tau_fed_midVec(index) = one.current * ct_scale_midVec(index);
+                temperature_midVec(index) = one.temperature;
+            }
+        }
 
         while (!queueArmMotorState.empty()) {
             auto msg = queueArmMotorState.pop();
@@ -324,6 +349,7 @@ void RLControlNewPlugin::rlControl()
                 temperature_midVec(index) = one.temperature;
             }
         }
+
 
         Q_a.head(motor_num) << pos_fed_midVec.head(motor_num);
         Qdot_a.head(motor_num) << vel_fed_midVec.head(motor_num);
@@ -542,15 +568,15 @@ void RLControlNewPlugin::rlControl()
 
         // Send Command motorctrl mode
         // Leg control
-        """
-        // Leg joint mapping (0-11) 
-        std::vector<int> legIds = {51, 52, 53, 54, 55, 56,  // 左腿 (left leg)
-                                   61, 62, 63, 64, 65, 66}; // 右腿 (right leg)
-        std::vector<std::string> legNames = {
-            l_hip_roll, l_hip_pitch, l_hip_yaw, l_knee, l_ankle_pitch, l_ankle_roll,
-            r_hip_roll, r_hip_pitch, r_hip_yaw, r_knee, r_ankle_pitch, r_ankle_roll
-        };
-        """
+
+        // // Leg joint mapping (0-11) 
+        // std::vector<int> legIds = {51, 52, 53, 54, 55, 56,  // 左腿 (left leg)
+        //                            61, 62, 63, 64, 65, 66}; // 右腿 (right leg)
+        // std::vector<std::string> legNames = {
+        //     l_hip_roll, l_hip_pitch, l_hip_yaw, l_knee, l_ankle_pitch, l_ankle_roll,
+        //     r_hip_roll, r_hip_pitch, r_hip_yaw, r_knee, r_ankle_pitch, r_ankle_roll
+        // };
+
         bodyctrl_msgs::msg::CmdMotorCtrl leg_msg;
         leg_msg.header.stamp = this->get_clock()->now();
 
@@ -568,15 +594,15 @@ void RLControlNewPlugin::rlControl()
         pubLegMotorCmd->publish(leg_msg);
 
         // Arm control
-        """
-        // Arm joint mapping for Tienkung Pro | Add wrist rpy joints (12-25)
-        std::vector<int> armIds = {11, 12, 13, 14, 15, 16, 17   // 左臂 (left arm)
-                                   21, 22, 23, 24, 25, 26, 27}; // 右臂 (right arm)
-        std::vector<std::string> armNames = {
-            l_shoulder_pitch, l_shoulder_roll, l_shoulder_yaw, l_elbow, l_wrist_yaw, l_wrist_pitch, l_wrist_roll,
-            r_shoulder_pitch, r_shoulder_roll, r_shoulder_yaw, r_elbow, r_wrist_yaw, r_wrist_pitch, r_wrist_roll,
-        };
-        """
+
+        // // Arm joint mapping for Tienkung Pro | Add wrist rpy joints (12-25)
+        // std::vector<int> armIds = {11, 12, 13, 14, 15, 16, 17   // 左臂 (left arm)
+        //                            21, 22, 23, 24, 25, 26, 27}; // 右臂 (right arm)
+        // std::vector<std::string> armNames = {
+        //     l_shoulder_pitch, l_shoulder_roll, l_shoulder_yaw, l_elbow, l_wrist_yaw, l_wrist_pitch, l_wrist_roll,
+        //     r_shoulder_pitch, r_shoulder_roll, r_shoulder_yaw, r_elbow, r_wrist_yaw, r_wrist_pitch, r_wrist_roll,
+        // };
+
         bodyctrl_msgs::msg::CmdMotorCtrl arm_msg;
         arm_msg.header.stamp = this->get_clock()->now();
 
@@ -635,7 +661,7 @@ void RLControlNewPlugin::rlControl()
             cmd_waist.tor = tau_cmd_midVec(index);
             waist_msg.cmds.push_back(cmd_waist);
         }
-        pubWaistMotorCmd->publish(cmd_waist);
+        pubWaistMotorCmd->publish(waist_msg);
 
         timer3 = timer.currentTime() - start_time - timer1 - timer2;
         sleep2Time = start_time + period;

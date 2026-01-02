@@ -16,7 +16,7 @@ Joystick_humanoid::Joystick_humanoid()
       std::cerr << "[ERROR] Failed to find package: rl_control_new - " << e.what() << std::endl;
       pkg_path = "../rl_control_new";
     }
-    YAML::Node config = YAML::LoadFile(pkg_path + "/config/tg22_config.yaml"); // 使用相对路径加载配置文件
+    YAML::Node config = YAML::LoadFile(pkg_path + "/config/tg30_config.yaml"); // 使用相对路径加载配置文件
     if (!config)
     {
       std::cerr << "[Joystick_humanoid] Failed to load config file: /path/to/config.yaml" << std::endl;

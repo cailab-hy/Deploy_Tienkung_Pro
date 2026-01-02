@@ -13,7 +13,7 @@ rl_control_new/
 ├── config/                     # Configuration files directory
 │   ├── policy/                 # Policy network model files
 │   │   └── policy.xml          # Policy network model
-│   └── tg22_config.yaml        # Robot configuration file
+│   └── tg30_config.yaml        # Robot configuration file
 ├── include/                    # Header files directory
 │   └── broccoli/               # Broccoli library header files
 ├── launch/                     # ROS2 launch files
@@ -120,7 +120,7 @@ ros2 launch rl_control_new rl.launch.py
 
 ### Configuration File Description
 
-The configuration file [tg22_config.yaml](./config/tg22_config.yaml) contains the following main parameters:
+The configuration file [tg30_config.yaml](./config/tg30_config.yaml) contains the following main parameters:
 
 - `motor_num`: Number of motors
 - `actions_size`: Action space dimension

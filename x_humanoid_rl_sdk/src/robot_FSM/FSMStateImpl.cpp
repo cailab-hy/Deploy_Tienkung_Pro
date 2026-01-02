@@ -5,15 +5,15 @@
 #define PI 3.141592654
 #endif
 
-// const int obs_num = 750; // Tienkung Lite
-const int obs_num = 1050;   // Tienkung Pro
+// const int obs_num = 750;    // Tienkung Lite
+const int obs_num = 1050;   // policy.xml input dim = 1050
 
 ov::Core core;
 std::shared_ptr<ov::Model> model;
 ov::CompiledModel compiled_model;
 ov::InferRequest infer_request;
 std::vector<float> input_vec(obs_num, 0.);
-ov::Tensor ov_in_tensor0(ov::element::f32, ov::Shape{obs_num}, input_vec.data());
+ov::Tensor ov_in_tensor0(ov::element::f32, ov::Shape{1, static_cast<size_t>(obs_num)}, input_vec.data());
 
 // Eigen::VectorXd zero_pos = Eigen::VectorXd::Zero(20); // Tienkung Lite
 Eigen::VectorXd zero_pos = Eigen::VectorXd::Zero(30);    // Tienkung Pro
@@ -40,13 +40,11 @@ void FSMInit(const std::string& config_file) {
   }
   std::cout << "MLP forward succeed!" << std::endl;
 
-  """
-  // zero_pos for Tienkung Lite
-  zero_pos << 0.0, -0.5, 0.0, 1.0, -0.5, 0.0,
-      0.0, -0.5, 0.0, 1.0, -0.5, 0.0,
-      0.0, 0.1, 0.0, -0.3,
-      0.0, -0.1, -0.0, -0.3;
-  """
+  // // zero_pos for Tienkung Lite
+  // zero_pos << 0.0, -0.5, 0.0, 1.0, -0.5, 0.0,
+  //     0.0, -0.5, 0.0, 1.0, -0.5, 0.0,
+  //     0.0, 0.1, 0.0, -0.3,
+  //     0.0, -0.1, -0.0, -0.3;
 
   // zero_pos for Tienkung Pro
   zero_pos << 0.0, -0.5, 0.0, 1.0, -0.5, -0.5,    // left leg:  "l_hip_roll", "l_hip_pitch", "l_hip_yaw", "l_knee", "l_ankle_pitch", "l_ankle_roll",
@@ -141,13 +139,13 @@ void StateMLP::OnEnter() {
   trans_time = 0.5;
   left_phase = left_theta_offset;
   right_phase = right_theta_offset;
-  """
-  // default_dof_pos for tienkung lite
-  default_dof_pos << 0.0, -0.5, 0.0, 1.0, -0.5, 0.0,
-      0.0, -0.5, -0.0, 1.0, -0.5, 0.0,
-      0.0, 0.1, 0.0, -0.3,
-      0.0, -0.1, -0.0, -0.3;
-  """
+
+  // // default_dof_pos for tienkung lite
+  // default_dof_pos << 0.0, -0.5, 0.0, 1.0, -0.5, 0.0,
+  //     0.0, -0.5, -0.0, 1.0, -0.5, 0.0,
+  //     0.0, 0.1, 0.0, -0.3,
+  //     0.0, -0.1, -0.0, -0.3;
+
   // default_dof_pos for tienkung pro
   default_dof_pos << 0.0, -0.5, 0.0, 1.0, -0.5, -0.5,   // left leg:  "l_hip_roll", "l_hip_pitch", "l_hip_yaw", "l_knee", "l_ankle_pitch", "l_ankle_roll",
       0.0, -0.5, 0.0, 1.0, -0.5, -0.5,                  // right leg: "r_hip_roll", "r_hip_pitch", "r_hip_yaw", "r_knee", "r_ankle_pitch", "r_ankle_roll"
@@ -252,13 +250,13 @@ void StateMLP::Run(xbox_flag &flag) {
   input_vec[7] = command[1] * command_scales[1];
   input_vec[8] = command[2] * command_scales[2];
 
-  """
-  // Tienkung Lite
-  std::vector<int> mujoco_to_isaac_idx = {
-    0,  6,  12, 16, 1,  7,  13, 17, 2,  8,
-    14, 18, 3,  9,  15, 19, 4,  10, 5,  11
-  };
-  """
+
+  // // Tienkung Lite
+  // std::vector<int> mujoco_to_isaac_idx = {
+  //   0,  6,  12, 16, 1,  7,  13, 17, 2,  8,
+  //   14, 18, 3,  9,  15, 19, 4,  10, 5,  11
+  // };
+
   // Tienkung Pro (https://www.notion.so/ID-2dad117f088d8090811ed17e424d4b7c)
   std::vector<int> mujoco_to_isaac_idx = {
     1,  6,  11, 16, 20, 24, 2,  7,  12, 17, 21, 25, 0,  3,  8,
@@ -303,13 +301,11 @@ void StateMLP::Run(xbox_flag &flag) {
       }
   }
 
-  """
-  // Tienkung Lite
-  std::vector<int> isaac_to_mujoco_idx = {
-    0, 4, 8, 12, 16, 18, 1, 5, 9, 13, 
-    17, 19, 2, 6, 10, 14, 3, 7, 11, 15
-  };
-  """
+  // // Tienkung Lite
+  // std::vector<int> isaac_to_mujoco_idx = {
+  //   0, 4, 8, 12, 16, 18, 1, 5, 9, 13, 
+  //   17, 19, 2, 6, 10, 14, 3, 7, 11, 15
+  // };
 
   // Tienkung Pro (https://www.notion.so/ID-2dad117f088d8090811ed17e424d4b7c)
   std::vector<int> isaac_to_mujoco_idx = {

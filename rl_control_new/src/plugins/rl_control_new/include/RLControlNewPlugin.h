@@ -124,7 +124,7 @@ private:
     rclcpp::Publisher<bodyctrl_msgs::msg::CmdMotorCtrl>::SharedPtr pubArmMotorCmd;
     rclcpp::Publisher<bodyctrl_msgs::msg::CmdMotorCtrl>::SharedPtr pubHeadMotorCmd;
     rclcpp::Publisher<bodyctrl_msgs::msg::CmdMotorCtrl>::SharedPtr pubWaistMotorCmd;
-    // rclcpp::Publisher<bodyctrl_msgs::msg::CmdSetMotorPosition>::SharedPtr waists_cmd_pub_;
+    rclcpp::Publisher<bodyctrl_msgs::msg::CmdSetMotorPosition>::SharedPtr waists_cmd_pub_;
 
     // 状态变量 (state variables)
     Eigen::VectorXd q_a;            // 关节角度实际值 (Actual joint angles)
