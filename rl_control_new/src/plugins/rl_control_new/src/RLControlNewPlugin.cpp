@@ -635,6 +635,7 @@ void RLControlNewPlugin::rlControl()
             cmd_waist.tor = tau_cmd_midVec(index);
             waist_msg.cmds.push_back(cmd_waist);
         }
+        pubWaistMotorCmd->publish(cmd_waist);
 
         timer3 = timer.currentTime() - start_time - timer1 - timer2;
         sleep2Time = start_time + period;
