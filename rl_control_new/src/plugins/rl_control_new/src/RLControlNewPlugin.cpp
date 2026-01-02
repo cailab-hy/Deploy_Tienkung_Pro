@@ -579,9 +579,8 @@ void RLControlNewPlugin::rlControl()
 
         bodyctrl_msgs::msg::CmdMotorCtrl leg_msg;
         leg_msg.header.stamp = this->get_clock()->now();
-
         for (int i = 0; i < 12; i++)
-        {
+        {   
             bodyctrl_msgs::msg::MotorCtrl cmd;
             cmd.name = idMap.getIdByIndex(i);
             cmd.kp = robot_data.joint_kp_p_(i);
@@ -622,6 +621,7 @@ void RLControlNewPlugin::rlControl()
             cmd_arm.spd = vel_cmd_midVec(index);
             cmd_arm.tor = tau_cmd_midVec(index);
             arm_msg.cmds.push_back(cmd_arm);
+            // RCLCPP_WARN(this->get_logger(), "[KP] %f [KD] %f [Pose] %f [Speed] %f [Torque] %f",cmd_arm.kp, cmd_arm.kd, cmd_arm.pos,cmd_arm.spd,cmd_arm.tor);
         }
 
         pubArmMotorCmd->publish(arm_msg);

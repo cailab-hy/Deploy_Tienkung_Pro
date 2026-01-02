@@ -47,12 +47,18 @@ void FSMInit(const std::string& config_file) {
   //     0.0, -0.1, -0.0, -0.3;
 
   // zero_pos for Tienkung Pro
-  zero_pos << 0.0, -0.5, 0.0, 1.0, -0.5, -0.5,    // left leg:  "l_hip_roll", "l_hip_pitch", "l_hip_yaw", "l_knee", "l_ankle_pitch", "l_ankle_roll",
-    0.0, -0.5, 0.0, 1.0, -0.5, -0.5,              // right leg: "r_hip_roll", "r_hip_pitch", "r_hip_yaw", "r_knee", "r_ankle_pitch", "r_ankle_roll"
-    0.0, 0.1, 0.0, -0.3, 0.0, 0.0, 0.0,           // left arm:  "l_shoulder_pitch", "l_shoulder_roll", "l_shoulder_yaw", "l_elbow", "l_wrist_yaw", "l_wrist_pitch", "l_wrist_roll",
-    0.0, -0.1, -0.0, -0.3, 0.0, 0.0, 0.0,         // right arm: "r_shoulder_pitch", "r_shoulder_roll", "r_shoulder_yaw", "r_elbow", "r_wrist_yaw", "r_wrist_pitch", "r_wrist_roll"
-    0.0, 0.0, 0.0, 0.0;                           // head and waist: "head_roll", "head_pitch", "head_yaw", "waist_yaw"
+  zero_pos << 0.0, -0.5, 0.0, 1.0, -0.5, 0.0,              // left leg:  "l_hip_roll", "l_hip_pitch", "l_hip_yaw", "l_knee", "l_ankle_pitch", "l_ankle_roll",
+              0.0, -0.5, 0.0, 1.0, -0.5, 0.0,              // right leg: "r_hip_roll", "r_hip_pitch", "r_hip_yaw", "r_knee", "r_ankle_pitch", "r_ankle_roll"
+              0.0, 0.1, 0.0, -0.3, 0.0, 0.0, 0.0,           // left arm:  "l_shoulder_pitch", "l_shoulder_roll", "l_shoulder_yaw", "l_elbow", "l_wrist_yaw", "l_wrist_pitch", "l_wrist_roll",
+              0.0, -0.1, -0.0, -0.3, 0.0, 0.0, 0.0,         // right arm: "r_shoulder_pitch", "r_shoulder_roll", "r_shoulder_yaw", "r_elbow", "r_wrist_yaw", "r_wrist_pitch", "r_wrist_roll"
+              0.0, 0.0, 0.0, 0.0;                           // head and waist: "head_roll", "head_pitch", "head_yaw", "waist_yaw"
 }
+
+// -0.191941   -0.397205   -0.233338    0.402575   -0.560351     0.29389    
+// 0.251162   -0.475592     1.05093    0.605919   -0.484779     -0.4018   
+// -0.158096  -0.0919909 -0.00095892   -0.494589  0.00460196  0.00198936 -0.00694609  
+// -0.0209718     -0.1156   0.0297928   -0.552401  0.00656748    0.105582 -0.00235033 
+// 0.000866413  0.00118065 -0.00334644   0.0132542
 
 StateZero::StateZero(RobotData *robot_data) : FSMState(robot_data) {
   robot_data_ = robot_data;
@@ -147,8 +153,8 @@ void StateMLP::OnEnter() {
   //     0.0, -0.1, -0.0, -0.3;
 
   // default_dof_pos for tienkung pro
-  default_dof_pos << 0.0, -0.5, 0.0, 1.0, -0.5, -0.5,   // left leg:  "l_hip_roll", "l_hip_pitch", "l_hip_yaw", "l_knee", "l_ankle_pitch", "l_ankle_roll",
-      0.0, -0.5, 0.0, 1.0, -0.5, -0.5,                  // right leg: "r_hip_roll", "r_hip_pitch", "r_hip_yaw", "r_knee", "r_ankle_pitch", "r_ankle_roll"
+  default_dof_pos << 0.0, -0.5, 0.0, 1.0, -0.5, 0.0,   // left leg:  "l_hip_roll", "l_hip_pitch", "l_hip_yaw", "l_knee", "l_ankle_pitch", "l_ankle_roll",
+      0.0, -0.5, 0.0, 1.0, -0.5, 0.0,                  // right leg: "r_hip_roll", "r_hip_pitch", "r_hip_yaw", "r_knee", "r_ankle_pitch", "r_ankle_roll"
       0.0, 0.1, 0.0, -0.3, 0.0, 0.0, 0.0,               // left arm:  "l_shoulder_pitch", "l_shoulder_roll", "l_shoulder_yaw", "l_elbow", "l_wrist_yaw", "l_wrist_pitch", "l_wrist_roll",
       0.0, -0.1, -0.0, -0.3, 0.0, 0.0, 0.0,             // right arm: "r_shoulder_pitch", "r_shoulder_roll", "r_shoulder_yaw", "r_elbow", "r_wrist_yaw", "r_wrist_pitch", "r_wrist_roll"
       0.0, 0.0, 0.0, 0.0;                               // head and waist: "head_roll", "head_pitch", "head_yaw", "waist_yaw"
@@ -233,19 +239,19 @@ void StateMLP::Run(xbox_flag &flag) {
   Eigen::Vector3d ang_vel = Rb_w.transpose() * R_xyz_omega_a * robot_data_->q_dot_a_.segment(3, 3) * obs_scales_ang_vel;
   ang_vel = omega_filter->mFilter(ang_vel);
 
-  // 把 Eigen 里的数据写到 input_vec (Write the data from Eigen into input_vec)
+  // 把 Eigen 里的数据写到 input_vec (Write the data from Eigen into input_vec) 3
   input_vec[0] = ang_vel(0);
   input_vec[1] = ang_vel(1);
   input_vec[2] = ang_vel(2);
   
-
+  // quat2rot 3
   Eigen::Vector3d base_z = -Rb_w.transpose().col(2);
   input_vec[3] = base_z(0);
   input_vec[4] = base_z(1);
   input_vec[5] = base_z(2);
 
 
-  // command
+  // command_vel 3
   input_vec[6] = command[0] * command_scales[0];
   input_vec[7] = command[1] * command_scales[1];
   input_vec[8] = command[2] * command_scales[2];
@@ -263,22 +269,22 @@ void StateMLP::Run(xbox_flag &flag) {
     13, 4,  9,  14, 18, 22, 26, 28, 5,  10, 15, 19, 23, 27, 29
   };
 
-  // Dof pos
+  // Dof pos: 30
   for (int i = 0; i < joint_num_; i++) {
     int idx = mujoco_to_isaac_idx[i];
     input_vec[9 + i] = (robot_data_->q_a_(6 + idx) - default_dof_pos(idx)) * obs_scales_dof_pos;
   }
 
-  // Dof vel
+  // Dof vel: 
  for (int i = 0; i < joint_num_; i++) {
     int idx = mujoco_to_isaac_idx[i];
-    input_vec[29 + i] = robot_data_->q_dot_a_(6 + idx) * obs_scales_dof_vel;
+    input_vec[39 + i] = robot_data_->q_dot_a_(6 + idx) * obs_scales_dof_vel;
   }
 
   // actions
   clip(action_last, -100.0, 100.0);
   for (int i = 0; i < action_num; i++) {
-      input_vec[49 + i] = action_last(i);
+      input_vec[69 + i] = action_last(i);
   }
 
   // gait phase
@@ -288,16 +294,16 @@ void StateMLP::Run(xbox_flag &flag) {
                                     left_phase_ratio,
                                     right_phase_ratio);
   for (int i = 0; i < 6; i++) {
-      input_vec[69 + i] = gait(i);
+      input_vec[99 + i] = gait(i);
   }
 
   if ((int)(timer / dt_) % freq_ratio_ == 0) {
       if (first_Run) {
           first_Run = false;
       } else {
-          std::vector<float> new_obs(input_vec.begin(), input_vec.begin() + 75);
-          std::move(input_vec.begin() + 75, input_vec.end(), input_vec.begin());
-          std::copy(new_obs.begin(), new_obs.end(), input_vec.end() - 75);
+          std::vector<float> new_obs(input_vec.begin(), input_vec.begin() + 105);
+          std::move(input_vec.begin() + 105, input_vec.end(), input_vec.begin());
+          std::copy(new_obs.begin(), new_obs.end(), input_vec.end() - 105);
       }
   }
 
