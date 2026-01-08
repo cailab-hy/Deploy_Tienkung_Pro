@@ -339,9 +339,9 @@ void StateMLP::Run(xbox_flag &flag) {
   input_vec[5] = base_z(2);
 
   // Write [6:9] scaled user commands into observation.
-  input_vec[6] = command[0] * command_scales[0];
-  input_vec[7] = command[1] * command_scales[1];
-  input_vec[8] = command[2] * command_scales[2];
+  input_vec[6] = command[0] * 0.0 // command_scales[0];
+  input_vec[7] = command[1] * 0.0 // command_scales[1];
+  input_vec[8] = command[2] * 0.0 // command_scales[2];
 
 
   // Joint-index mapping: controller/MuJoCo joint order -> Isaac/policy joint order.
