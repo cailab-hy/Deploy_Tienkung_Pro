@@ -55,5 +55,10 @@ joystick:
 
 simulation: false # 是否在仿真环境下运行 (Whether to run in simulation environment)
 
+joint_limits:
+  path: /config/joint_limits_tg30.yaml
+  use_soft: true
+  margin_ratio: 0.1
+
 mlp:
   path: /config/policy/policy

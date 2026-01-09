@@ -61,6 +61,7 @@ ov::Tensor ov_in_tensor0(
 // This posture is used to safely initialize the humanoid before enabling learned control.
 Eigen::VectorXd zero_pos = Eigen::VectorXd::Zero(tienkung_pro_dof);
 
+
 // -----------------------------------------------------------------------------
 // FSM initialization
 // Loads the MLP policy and prepares OpenVINO inference.
@@ -98,6 +99,8 @@ void FSMInit(const std::string& config_file) {
     infer_request.infer();
   }
   std::cout << "MLP forward succeed!" << std::endl;
+
+
 
   // Hard-coded safe default posture for Tienkung Pro
   zero_pos << 0.0, -0.5, 0.0, 1.0, -0.5, 0.0,           // left leg:  "l_hip_roll", "l_hip_pitch", "l_hip_yaw", "l_knee", "l_ankle_pitch", "l_ankle_roll",
@@ -429,6 +432,7 @@ void StateMLP::Run(xbox_flag &flag) {
   Eigen::VectorXd mlp_out_scaled = mlp_out_reordered * action_scales + default_dof_pos;
   Eigen::VectorXd mlp_out_dot_scaled = mlp_out_dot * action_scales;
 
+
   robot_data_->q_d_.tail(joint_num_) = mlp_out_scaled;
   robot_data_->q_dot_d_.setZero();
   robot_data_->tau_d_.setZero();
@@ -537,3 +541,5 @@ FSMStateName StateStop::CheckTransition(const xbox_flag &flag) {
 void StateStop::OnExit() {
   // No special exit handling for STOP state.
 }
+
+

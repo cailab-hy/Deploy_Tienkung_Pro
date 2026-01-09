@@ -16,6 +16,7 @@
 #include <thread>
 #include <chrono>
 #include <cmath>
+#include <algorithm>
 #include <iostream>
 #include <time.h>
 #include <fstream>
@@ -59,6 +60,63 @@ bool RLControlNewPlugin::LoadConfig(const std::string &_config_file)
     return true;
 }
 
+bool RLControlNewPlugin::LoadJointLimits(const std::string &limits_path, double margin_ratio)
+{
+    // CAI Lab: load hard limits and compute safety margins for ROS command clamping.
+    YAML::Node limits = YAML::LoadFile(limits_path);
+    YAML::Node joints = limits["joints"];
+    if (!joints)
+    {
+        RCLCPP_WARN(this->get_logger(), "Joint limits missing 'joints' section: %s", limits_path.c_str());
+        return false;
+    }
+
+    if (margin_ratio < 0.0)
+    {
+        margin_ratio = 0.0;
+    }
+    if (margin_ratio > 0.45)
+    {
+        margin_ratio = 0.45;
+    }
+
+    joint_limit_min_ = Eigen::VectorXd::Zero(motor_num);
+    joint_limit_max_ = Eigen::VectorXd::Zero(motor_num);
+
+    for (int i = 0; i < motor_num; ++i)
+    {
+        const std::string joint_name = idMap.getNameByIndex(i);
+        if (joint_name.empty())
+        {
+            RCLCPP_WARN(this->get_logger(), "Joint name missing for index %d", i);
+            return false;
+        }
+        YAML::Node joint_node = joints[joint_name];
+        if (!joint_node || !joint_node["hard_min"] || !joint_node["hard_max"])
+        {
+            RCLCPP_WARN(this->get_logger(), "Joint limits missing for %s in %s", joint_name.c_str(), limits_path.c_str());
+            return false;
+        }
+        const double hard_min = joint_node["hard_min"].as<double>();
+        const double hard_max = joint_node["hard_max"].as<double>();
+        const double range = hard_max - hard_min;
+        const double margin = range * margin_ratio;
+        const double safe_min = hard_min + margin;
+        const double safe_max = hard_max - margin;
+        if (safe_min > safe_max)
+        {
+            RCLCPP_WARN(this->get_logger(), "Invalid joint limits for %s", joint_name.c_str());
+            return false;
+        }
+        joint_limit_min_(i) = safe_min;
+        joint_limit_max_(i) = safe_max;
+    }
+
+    joint_limit_margin_ratio_ = margin_ratio;
+    return true;
+}
+
+
 void RLControlNewPlugin::onInit()
 {
     std::string pkg_path = ament_index_cpp::get_package_share_directory("rl_control_new");
@@ -69,6 +127,21 @@ void RLControlNewPlugin::onInit()
     }
 
     idMap.bodyCanIdMapInit();
+
+    if (config_["joint_limits"] && config_["joint_limits"]["path"])
+    {
+        double margin_ratio = 0.1;
+        if (config_["joint_limits"]["margin_ratio"])
+        {
+            margin_ratio = config_["joint_limits"]["margin_ratio"].as<double>();
+        }
+        const std::string limits_path = pkg_path + config_["joint_limits"]["path"].as<std::string>();
+        joint_limits_loaded_ = LoadJointLimits(limits_path, margin_ratio);
+        if (!joint_limits_loaded_)
+        {
+            RCLCPP_WARN(this->get_logger(), "Joint limits disabled (failed to load): %s", limits_path.c_str());
+        }
+    }
     ////// (Tienkung Lite) 腿12 + 手臂8 + 浮动基6 = 26 ////// (Leg 12 + Arm 8 + Floating base 6 = 26) //////
     ////// (Tienkung Pro) Leg 12 + Arm 14 + Head 3 + Waist 1 + Floating base 6 = 36 //////
     int whole_joint_num = 36;
@@ -523,6 +596,38 @@ void RLControlNewPlugin::rlControl()
         q_d = robot_data.q_d_.tail(motor_num);
         qdot_d = robot_data.q_dot_d_.tail(motor_num);
         tor_d = robot_data.tau_d_.tail(motor_num);
+
+        // CAI Lab: clamp desired joints before publishing ROS commands.
+        if (joint_limits_loaded_ && joint_limit_min_.size() == motor_num)
+        {
+            int clamped_count = 0;
+            double max_overflow = 0.0;
+            for (int i = 0; i < motor_num; ++i)
+            {
+                if (q_d(i) < joint_limit_min_(i)) {
+                    const double overflow = joint_limit_min_(i) - q_d(i);
+                    if (overflow > max_overflow) { max_overflow = overflow; }
+                    q_d(i) = joint_limit_min_(i);
+                    ++clamped_count;
+                }
+                if (q_d(i) > joint_limit_max_(i)) {
+                    const double overflow = q_d(i) - joint_limit_max_(i);
+                    if (overflow > max_overflow) { max_overflow = overflow; }
+                    q_d(i) = joint_limit_max_(i);
+                    ++clamped_count;
+                }
+            }
+            if (clamped_count > 0)
+            {
+                RCLCPP_WARN_THROTTLE(
+                    this->get_logger(),
+                    *this->get_clock(),
+                    1000,
+                    "Joint limit clamp applied: count=%d max_overflow=%.4f rad",
+                    clamped_count,
+                    max_overflow);
+            }
+        }
 
         if (!simulation)
         {

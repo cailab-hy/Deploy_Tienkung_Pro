@@ -65,6 +65,15 @@ private:
     bool LoadConfig(const std::string &config_file);
 
     /**
+     * @brief Load joint limits for ROS-side command clamping.
+     * @note CAI Lab: added to keep published joint commands within a safe margin of joint ranges.
+     * @param limits_path Path to the joint limits file.
+     * @param margin_ratio Safety margin ratio within joint range.
+     * @return Whether loading was successful.
+     */
+    bool LoadJointLimits(const std::string &limits_path, double margin_ratio);
+
+    /**
      * @brief 强化学习控制主循环 (Main loop for reinforcement learning control)
      */
     void rlControl();
@@ -173,6 +182,11 @@ private:
     std::string _config_file;    // 配置文件路径 (Path to configuration file)
     YAML::Node config_;          // YAML配置对象 (YAML configuration object)
     std::unordered_map<std::string, std::string> _config_map; // 配置映射 (Configuration map)
+
+    Eigen::VectorXd joint_limit_min_; // CAI Lab: lower joint limits for ROS command clamping.
+    Eigen::VectorXd joint_limit_max_; // CAI Lab: upper joint limits for ROS command clamping.
+    bool joint_limits_loaded_ = false; // CAI Lab: whether joint limits are active for command clamping.
+    double joint_limit_margin_ratio_ = 0.1; // CAI Lab: safety margin ratio within joint range.
 
     xbox_map_t xbox_map;         // 手柄映射结构体 (Game controller mapping structure)
 

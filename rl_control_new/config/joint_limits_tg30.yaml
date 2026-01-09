@@ -1,0 +1,186 @@
+source:
+  mjcf: /home/geun/tk_ws/CAI_walkerE/legged_lab/assets/tienkung_pro/mjcf/tiangong2.0_pro.xml
+  margin_deg: 5.0
+  margin_rad: 0.087266
+  note: soft limits = hard +/- margin, clamped to hard range
+joints:
+  head_pitch:
+    source_joint: head_pitch_joint
+    hard_min: -0.436332
+    hard_max: 0.436332
+    soft_min: -0.349066
+    soft_max: 0.349066
+  head_roll:
+    source_joint: head_roll_joint
+    hard_min: -0.453786
+    hard_max: 0.453786
+    soft_min: -0.366520
+    soft_max: 0.366520
+  head_yaw:
+    source_joint: head_yaw_joint
+    hard_min: -1.570800
+    hard_max: 1.570800
+    soft_min: -1.483534
+    soft_max: 1.483534
+  l_ankle_pitch:
+    source_joint: ankle_pitch_l_joint
+    hard_min: -1.221730
+    hard_max: 0.523599
+    soft_min: -1.134464
+    soft_max: 0.436333
+  l_ankle_roll:
+    source_joint: ankle_roll_l_joint
+    hard_min: -0.523599
+    hard_max: 0.523599
+    soft_min: -0.436333
+    soft_max: 0.436333
+  l_elbow:
+    source_joint: elbow_pitch_l_joint
+    hard_min: -2.617990
+    hard_max: 0.261799
+    soft_min: -2.530724
+    soft_max: 0.174533
+  l_hip_pitch:
+    source_joint: hip_pitch_l_joint
+    hard_min: -2.792530
+    hard_max: 2.094400
+    soft_min: -2.705264
+    soft_max: 2.007134
+  l_hip_roll:
+    source_joint: hip_roll_l_joint
+    hard_min: -0.785398
+    hard_max: 0.785398
+    soft_min: -0.698132
+    soft_max: 0.698132
+  l_hip_yaw:
+    source_joint: hip_yaw_l_joint
+    hard_min: -1.047200
+    hard_max: 1.047200
+    soft_min: -0.959934
+    soft_max: 0.959934
+  l_knee:
+    source_joint: knee_pitch_l_joint
+    hard_min: 0.000000
+    hard_max: 2.391100
+    soft_min: 0.087266
+    soft_max: 2.303834
+  l_shoulder_pitch:
+    source_joint: shoulder_pitch_l_joint
+    hard_min: -2.967060
+    hard_max: 2.967060
+    soft_min: -2.879794
+    soft_max: 2.879794
+  l_shoulder_roll:
+    source_joint: shoulder_roll_l_joint
+    hard_min: -1.047200
+    hard_max: 1.832600
+    soft_min: -0.959934
+    soft_max: 1.745334
+  l_shoulder_yaw:
+    source_joint: shoulder_yaw_l_joint
+    hard_min: -2.967060
+    hard_max: 2.967060
+    soft_min: -2.879794
+    soft_max: 2.879794
+  l_wrist_pitch:
+    source_joint: wrist_pitch_l_joint
+    hard_min: -1.309000
+    hard_max: 1.658060
+    soft_min: -1.221734
+    soft_max: 1.570794
+  l_wrist_roll:
+    source_joint: wrist_roll_l_joint
+    hard_min: -1.047200
+    hard_max: 0.785398
+    soft_min: -0.959934
+    soft_max: 0.698132
+  l_wrist_yaw:
+    source_joint: elbow_yaw_l_joint
+    hard_min: -2.967060
+    hard_max: 2.967060
+    soft_min: -2.879794
+    soft_max: 2.879794
+  r_ankle_pitch:
+    source_joint: ankle_pitch_r_joint
+    hard_min: -1.221730
+    hard_max: 0.523599
+    soft_min: -1.134464
+    soft_max: 0.436333
+  r_ankle_roll:
+    source_joint: ankle_roll_r_joint
+    hard_min: -0.523599
+    hard_max: 0.523599
+    soft_min: -0.436333
+    soft_max: 0.436333
+  r_elbow:
+    source_joint: elbow_pitch_r_joint
+    hard_min: -2.617990
+    hard_max: 0.261799
+    soft_min: -2.530724
+    soft_max: 0.174533
+  r_hip_pitch:
+    source_joint: hip_pitch_r_joint
+    hard_min: -2.792530
+    hard_max: 2.094400
+    soft_min: -2.705264
+    soft_max: 2.007134
+  r_hip_roll:
+    source_joint: hip_roll_r_joint
+    hard_min: -0.785398
+    hard_max: 0.785398
+    soft_min: -0.698132
+    soft_max: 0.698132
+  r_hip_yaw:
+    source_joint: hip_yaw_r_joint
+    hard_min: -1.047200
+    hard_max: 1.047200
+    soft_min: -0.959934
+    soft_max: 0.959934
+  r_knee:
+    source_joint: knee_pitch_r_joint
+    hard_min: 0.000000
+    hard_max: 2.391100
+    soft_min: 0.087266
+    soft_max: 2.303834
+  r_shoulder_pitch:
+    source_joint: shoulder_pitch_r_joint
+    hard_min: -2.967060
+    hard_max: 2.967060
+    soft_min: -2.879794
+    soft_max: 2.879794
+  r_shoulder_roll:
+    source_joint: shoulder_roll_r_joint
+    hard_min: -1.832600
+    hard_max: 1.047200
+    soft_min: -1.745334
+    soft_max: 0.959934
+  r_shoulder_yaw:
+    source_joint: shoulder_yaw_r_joint
+    hard_min: -2.967060
+    hard_max: 2.967060
+    soft_min: -2.879794
+    soft_max: 2.879794
+  r_wrist_pitch:
+    source_joint: wrist_pitch_r_joint
+    hard_min: -1.309000
+    hard_max: 1.658060
+    soft_min: -1.221734
+    soft_max: 1.570794
+  r_wrist_roll:
+    source_joint: wrist_roll_r_joint
+    hard_min: -0.785398
+    hard_max: 1.047200
+    soft_min: -0.698132
+    soft_max: 0.959934
+  r_wrist_yaw:
+    source_joint: elbow_yaw_r_joint
+    hard_min: -2.967060
+    hard_max: 2.967060
+    soft_min: -2.879794
+    soft_max: 2.879794
+  waist_yaw:
+    source_joint: body_yaw_joint
+    hard_min: -2.967060
+    hard_max: 3.141590
+    soft_min: -2.879794
+    soft_max: 3.054324
