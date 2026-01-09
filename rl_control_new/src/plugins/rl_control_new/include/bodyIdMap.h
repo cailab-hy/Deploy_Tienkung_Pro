@@ -36,14 +36,17 @@ public:
             "r_hip_roll", "r_hip_pitch", "r_hip_yaw", "r_knee", "r_ankle_pitch", "r_ankle_roll"
         };
 
+        // (Waist joint mapping for Tienkung Pro) (29)
+        std::vector<int> waistIds = {31}; // Waist joint
+        std::vector<std::string> waistNames = {
+            "waist_yaw"
+        };
 
-        // // 手臂关节映射 (Arm joint mapping for Tienkung Lite) (12-19)
-        // std::vector<int> armIds = {11, 12, 13, 14,   // 左臂 (left arm)
-        //                            21, 22, 23, 24,}; // 右臂 (right arm)
-        // std::vector<std::string> armNames = {
-        //    "l_shoulder_pitch", "l_shoulder_roll", "l_shoulder_yaw", "l_elbow",
-        //    "r_shoulder_pitch", "r_shoulder_roll", "r_shoulder_yaw", "r_elbow",
-        // };
+        // (Head joint mapping for Tienkung Pro) (26-28)
+        std::vector<int> headIds = {1, 2, 3}; // Head joints
+        std::vector<std::string> headNames = {
+            "head_roll", "head_pitch", "head_yaw"
+        };
 
         // 手臂关节映射 (Arm joint mapping for Tienkung Pro | Add wrist rpy joints) (12-25)
         std::vector<int> armIds = {11, 12, 13, 14, 15, 16, 17,   // 左臂 (left arm)
@@ -53,44 +56,20 @@ public:
             "r_shoulder_pitch", "r_shoulder_roll", "r_shoulder_yaw", "r_elbow", "r_wrist_yaw", "r_wrist_pitch", "r_wrist_roll",
         };
 
-        // (Head joint mapping for Tienkung Pro) (26-28)
-        std::vector<int> headIds = {1, 2, 3}; // Head joints
-        std::vector<std::string> headNames = {
-            "head_roll", "head_pitch", "head_yaw"
-        };
-
-        // (Waist joint mapping for Tienkung Pro) (29)
-        std::vector<int> waistIds = {31}; // Waist joint
-        std::vector<std::string> waistNames = {
-            "waist_yaw"
-        };
-
-        // """
-        // // 合并所有映射 (Combine all mappings)
-        // std::vector<int> allIds;
-        // std::vector<std::string> allNames;
-        
-        // allIds.insert(allIds.end(), legIds.begin(), legIds.end());
-        // allIds.insert(allIds.end(), armIds.begin(), armIds.end());
-        
-        // allNames.insert(allNames.end(), legNames.begin(), legNames.end());
-        // allNames.insert(allNames.end(), armNames.begin(), armNames.end());
-        // """
-
         // 合并所有映射 (Combine all mappings)
         std::vector<int> allIds;
         std::vector<std::string> allNames;
         
         allIds.insert(allIds.end(), legIds.begin(), legIds.end());
-        allIds.insert(allIds.end(), armIds.begin(), armIds.end());
-        allIds.insert(allIds.end(), headIds.begin(), headIds.end());
         allIds.insert(allIds.end(), waistIds.begin(), waistIds.end());
+        allIds.insert(allIds.end(), headIds.begin(), headIds.end());
+        allIds.insert(allIds.end(), armIds.begin(), armIds.end());
 
         allNames.insert(allNames.end(), legNames.begin(), legNames.end());
-        allNames.insert(allNames.end(), armNames.begin(), armNames.end());
-        allNames.insert(allNames.end(), headNames.begin(), headNames.end());
         allNames.insert(allNames.end(), waistNames.begin(), waistNames.end());
-
+        allNames.insert(allNames.end(), headNames.begin(), headNames.end());
+        allNames.insert(allNames.end(), armNames.begin(), armNames.end());
+        
         // 创建双向映射 (Create bidirectional mappings)
         for (size_t index = 0; index < allIds.size() && index < BODY_MAX_SERVO; ++index) {
             int canId = allIds[index];

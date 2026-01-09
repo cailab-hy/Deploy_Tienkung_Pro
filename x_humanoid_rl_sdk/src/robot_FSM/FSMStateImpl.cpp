@@ -100,11 +100,13 @@ void FSMInit(const std::string& config_file) {
   std::cout << "MLP forward succeed!" << std::endl;
 
   // Hard-coded safe default posture for Tienkung Pro
+
+
   zero_pos << 0.0, -0.5, 0.0, 1.0, -0.5, 0.0,           // left leg:  "l_hip_roll", "l_hip_pitch", "l_hip_yaw", "l_knee", "l_ankle_pitch", "l_ankle_roll",
               0.0, -0.5, 0.0, 1.0, -0.5, 0.0,           // right leg: "r_hip_roll", "r_hip_pitch", "r_hip_yaw", "r_knee", "r_ankle_pitch", "r_ankle_roll"
+              0.0, 0.0, 0.0, 0.0,                       // waist and head: "waist_yaw", "head_roll", "head_pitch", "head_yaw"
               0.0, 0.1, 0.0, -0.3, 0.0, 0.0, 0.0,       // left arm:  "l_shoulder_pitch", "l_shoulder_roll", "l_shoulder_yaw", "l_elbow", "l_wrist_yaw", "l_wrist_pitch", "l_wrist_roll",
-              0.0, -0.1, -0.0, -0.3, 0.0, 0.0, 0.0,     // right arm: "r_shoulder_pitch", "r_shoulder_roll", "r_shoulder_yaw", "r_elbow", "r_wrist_yaw", "r_wrist_pitch", "r_wrist_roll"
-              0.0, 0.0, 0.0, 0.0;                       // head and waist: "head_roll", "head_pitch", "head_yaw", "waist_yaw"
+              0.0, -0.1, -0.0, -0.3, 0.0, 0.0, 0.0;     // right arm: "r_shoulder_pitch", "r_shoulder_roll", "r_shoulder_yaw", "r_elbow", "r_wrist_yaw", "r_wrist_pitch", "r_wrist_roll"
 }
 
 // -----------------------------------------------------------------------------
@@ -218,11 +220,11 @@ void StateMLP::OnEnter() {
   right_phase = right_theta_offset;
 
   // default_dof_pos for tienkung pro
-  default_dof_pos << 0.0, -0.5, 0.0, 1.0, -0.5, 0.0,   // left leg:  "l_hip_roll", "l_hip_pitch", "l_hip_yaw", "l_knee", "l_ankle_pitch", "l_ankle_roll",
-      0.0, -0.5, 0.0, 1.0, -0.5, 0.0,                  // right leg: "r_hip_roll", "r_hip_pitch", "r_hip_yaw", "r_knee", "r_ankle_pitch", "r_ankle_roll"
-      0.0, 0.1, 0.0, -0.3, 0.0, 0.0, 0.0,              // left arm:  "l_shoulder_pitch", "l_shoulder_roll", "l_shoulder_yaw", "l_elbow", "l_wrist_yaw", "l_wrist_pitch", "l_wrist_roll",
-      0.0, -0.1, -0.0, -0.3, 0.0, 0.0, 0.0,            // right arm: "r_shoulder_pitch", "r_shoulder_roll", "r_shoulder_yaw", "r_elbow", "r_wrist_yaw", "r_wrist_pitch", "r_wrist_roll"
-      0.0, 0.0, 0.0, 0.0;                              // head and waist: "head_roll", "head_pitch", "head_yaw", "waist_yaw"
+  default_dof_pos << 0.0, -0.5, 0.0, 1.0, -0.5, 0.0,    // left leg:  "l_hip_roll", "l_hip_pitch", "l_hip_yaw", "l_knee", "l_ankle_pitch", "l_ankle_roll",
+              0.0, -0.5, 0.0, 1.0, -0.5, 0.0,           // right leg: "r_hip_roll", "r_hip_pitch", "r_hip_yaw", "r_knee", "r_ankle_pitch", "r_ankle_roll"
+              0.0, 0.0, 0.0, 0.0,                       // waist and head: "waist_yaw", "head_roll", "head_pitch", "head_yaw"
+              0.0, 0.1, 0.0, -0.3, 0.0, 0.0, 0.0,       // left arm:  "l_shoulder_pitch", "l_shoulder_roll", "l_shoulder_yaw", "l_elbow", "l_wrist_yaw", "l_wrist_pitch", "l_wrist_roll",
+              0.0, -0.1, -0.0, -0.3, 0.0, 0.0, 0.0;     // right arm: "r_shoulder_pitch", "r_shoulder_roll", "r_shoulder_yaw", "r_elbow", "r_wrist_yaw", "r_wrist_pitch", "r_wrist_roll"
 
   action_last.setZero();
   joint_pos_last_gait = zero_pos;
@@ -339,16 +341,18 @@ void StateMLP::Run(xbox_flag &flag) {
   input_vec[5] = base_z(2);
 
   // Write [6:9] scaled user commands into observation.
-  input_vec[6] = command[0] * 0.0 // command_scales[0];
-  input_vec[7] = command[1] * 0.0 // command_scales[1];
-  input_vec[8] = command[2] * 0.0 // command_scales[2];
+  input_vec[6] = command[0] * 0.0; // command_scales[0];
+  input_vec[7] = command[1] * 0.0; // command_scales[1];
+  input_vec[8] = command[2] * 0.0; // command_scales[2];
 
 
   // Joint-index mapping: controller/MuJoCo joint order -> Isaac/policy joint order.
   std::vector<int> mujoco_to_isaac_idx = {
     12,  0, 6, 13, 16, 23, 1, 7, 14, 17,
     24, 2, 8, 15, 18, 25, 3, 9, 19, 26,
-    4, 10, 20, 27, 5, 11, 21, 28, 22, 29};
+    4, 10, 20, 27, 5, 11, 21, 28, 22, 29
+    // 13, 8, 3, 0, 4, 9, 14, 18, 22, 26, 28, 5, 10, 15, 19, 23, 27, 29, 1, 6, 11, 16, 20, 24, 2, 7, 12, 17, 21, 25
+  };
 
   // Write [9:39] normalized joint position (relative to default_dof_pos).
   for (int i = 0; i < joint_num_; i++) {
@@ -394,9 +398,11 @@ void StateMLP::Run(xbox_flag &flag) {
   std::vector<int> isaac_to_mujoco_idx = {
     1, 6, 11, 16, 20, 24, 2, 7, 12, 17,
     21, 25, 0, 3, 8, 13, 4, 9, 14, 18, 
-    22, 26, 28, 5, 10, 15, 19, 23, 27, 29};
+    22, 26, 28, 5, 10, 15, 19, 23, 27, 29
+      // 3, 18, 24, 2, 4, 11, 19, 25, 1, 5, 12, 20, 26, 0, 6, 13, 21, 27, 7, 14, 22, 28, 8, 15, 23, 29, 9, 16, 10, 17
+  };
 
-  if ((int) (timer / dt_) % freq_ratio_ == 0) {
+    if ((int) (timer / dt_) % freq_ratio_ == 0) {
     // Copy the full stacked observation history (1050 floats) into the OpenVINO tensor.
     for (size_t i = 0; i < ov_in_tensor0.get_size(); ++i) {
       ov_in_tensor0.data<float>()[i] = input_vec[i];

@@ -229,6 +229,8 @@ void RLControlNewPlugin::rlControl()
         RCLCPP_WARN(this->get_logger(), "[RobotFSM] queue{head or waist} is empty");
         std::this_thread::sleep_for(std::chrono::milliseconds(10)); // 睡眠10毫秒(0.01秒) (Sleep for 10 milliseconds (0.01 seconds))
     }
+
+
     while (!queueLegMotorState.empty())
     {
         auto msg = queueLegMotorState.pop();
@@ -241,9 +243,10 @@ void RLControlNewPlugin::rlControl()
             temperature_midVec(index) = one.temperature;
         }
     }
-    while (!queueArmMotorState.empty())
-    {   
-        auto msg = queueArmMotorState.pop();
+
+    while (!queueWaistMotorState.empty())
+    {
+        auto msg = queueWaistMotorState.pop();
         for (auto &one : msg->status)
         {
             int index = idMap.getIndexById(one.name);
@@ -266,10 +269,9 @@ void RLControlNewPlugin::rlControl()
             temperature_midVec(index) = one.temperature;
         }
     }
-
-    while (!queueWaistMotorState.empty())
-    {
-        auto msg = queueWaistMotorState.pop();
+    while (!queueArmMotorState.empty())
+    {   
+        auto msg = queueArmMotorState.pop();
         for (auto &one : msg->status)
         {
             int index = idMap.getIndexById(one.name);
@@ -317,6 +319,7 @@ void RLControlNewPlugin::rlControl()
                 temperature_midVec(index) = one.temperature;
             }
         }
+
         while (!queueWaistMotorState.empty()) {
             auto msg = queueWaistMotorState.pop();
             for (auto &one : msg->status) {
@@ -327,6 +330,7 @@ void RLControlNewPlugin::rlControl()
                 temperature_midVec(index) = one.temperature;
             }
         }
+
 
         while (!queueHeadMotorState.empty()) {
             auto msg = queueHeadMotorState.pop();
@@ -339,6 +343,7 @@ void RLControlNewPlugin::rlControl()
             }
         }
 
+
         while (!queueArmMotorState.empty()) {
             auto msg = queueArmMotorState.pop();
             for (auto &one : msg->status) {
@@ -349,8 +354,6 @@ void RLControlNewPlugin::rlControl()
                 temperature_midVec(index) = one.temperature;
             }
         }
-
-
         Q_a.head(motor_num) << pos_fed_midVec.head(motor_num);
         Qdot_a.head(motor_num) << vel_fed_midVec.head(motor_num);
         Tor_a.head(motor_num) << tau_fed_midVec.head(motor_num);
@@ -566,17 +569,6 @@ void RLControlNewPlugin::rlControl()
         vel_cmd_midVec.head(motor_num) << Qdot_d.head(motor_num);
         tau_cmd_midVec.head(motor_num) << Tor_d.head(motor_num);
 
-        // Send Command motorctrl mode
-        // Leg control
-
-        // // Leg joint mapping (0-11) 
-        // std::vector<int> legIds = {51, 52, 53, 54, 55, 56,  // 左腿 (left leg)
-        //                            61, 62, 63, 64, 65, 66}; // 右腿 (right leg)
-        // std::vector<std::string> legNames = {
-        //     l_hip_roll, l_hip_pitch, l_hip_yaw, l_knee, l_ankle_pitch, l_ankle_roll,
-        //     r_hip_roll, r_hip_pitch, r_hip_yaw, r_knee, r_ankle_pitch, r_ankle_roll
-        // };
-
         bodyctrl_msgs::msg::CmdMotorCtrl leg_msg;
         leg_msg.header.stamp = this->get_clock()->now();
         for (int i = 0; i < 12; i++)
@@ -590,27 +582,18 @@ void RLControlNewPlugin::rlControl()
             cmd.tor = tau_cmd_midVec(i);
             leg_msg.cmds.push_back(cmd);
         }
+        // if (flag_.fsm_state_command == "gotoZero")
+        // {
         pubLegMotorCmd->publish(leg_msg);
-
-        // Arm control
-
-        // // Arm joint mapping for Tienkung Pro | Add wrist rpy joints (12-25)
-        // std::vector<int> armIds = {11, 12, 13, 14, 15, 16, 17   // 左臂 (left arm)
-        //                            21, 22, 23, 24, 25, 26, 27}; // 右臂 (right arm)
-        // std::vector<std::string> armNames = {
-        //     l_shoulder_pitch, l_shoulder_roll, l_shoulder_yaw, l_elbow, l_wrist_yaw, l_wrist_pitch, l_wrist_roll,
-        //     r_shoulder_pitch, r_shoulder_roll, r_shoulder_yaw, r_elbow, r_wrist_yaw, r_wrist_pitch, r_wrist_roll,
-        // };
+        // }
+        
 
         bodyctrl_msgs::msg::CmdMotorCtrl arm_msg;
         arm_msg.header.stamp = this->get_clock()->now();
 
-        // Tienkung Lite
-        // 发送手臂关节命令 (索引12-19，对应8个关节) (Send arm joint commands (indices 12-19, corresponding to 8 joints))
-        // std::vector<int> arm_indices = {12, 13, 14, 15, 16, 17, 18, 19};
-
         // Tienkung Pro
-        std::vector<int> arm_indices = {12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25};
+        // std::vector<int> arm_indices = {12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25};
+        std::vector<int> arm_indices = {16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29};
         for (int index : arm_indices)
         {
             bodyctrl_msgs::msg::MotorCtrl cmd_arm;
@@ -623,14 +606,17 @@ void RLControlNewPlugin::rlControl()
             arm_msg.cmds.push_back(cmd_arm);
             // RCLCPP_WARN(this->get_logger(), "[KP] %f [KD] %f [Pose] %f [Speed] %f [Torque] %f",cmd_arm.kp, cmd_arm.kd, cmd_arm.pos,cmd_arm.spd,cmd_arm.tor);
         }
-
+        // if (flag_.fsm_state_command == "gotoZero")
+        // {
         pubArmMotorCmd->publish(arm_msg);
-
+        // }
+        
         // Head control
         bodyctrl_msgs::msg::CmdMotorCtrl head_msg;
         head_msg.header.stamp = this->get_clock()->now();
 
-        std::vector<int> head_indices = {26, 27, 28}; // 头部关节索引 (Head joint indices)
+        // std::vector<int> head_indices = {26, 27, 28}; // 头部关节索引 (Head joint indices)
+        std::vector<int> head_indices = {13, 14, 15}; // 头部关节索引 (Head joint indices)
         for (int index : head_indices)
         {
             bodyctrl_msgs::msg::MotorCtrl cmd_head;
@@ -642,14 +628,18 @@ void RLControlNewPlugin::rlControl()
             cmd_head.tor = tau_cmd_midVec(index);
             head_msg.cmds.push_back(cmd_head);
         }
-
+        // if (flag_.fsm_state_command == "gotoZero")
+        // {
         pubHeadMotorCmd->publish(head_msg);
+        // }
+
 
         // Waist control
         bodyctrl_msgs::msg::CmdMotorCtrl waist_msg;
         waist_msg.header.stamp = this->get_clock()->now();
 
-        std::vector<int> waist_indices = {29}; // 腰部关节索引 (Waist joint indices)
+        // std::vector<int> waist_indices = {29}; // 腰部关节索引 (Waist joint indices)
+        std::vector<int> waist_indices = {12}; // 腰部关节索引 (Waist joint indices)
         for (int index : waist_indices)
         {
             bodyctrl_msgs::msg::MotorCtrl cmd_waist;
@@ -661,8 +651,11 @@ void RLControlNewPlugin::rlControl()
             cmd_waist.tor = tau_cmd_midVec(index);
             waist_msg.cmds.push_back(cmd_waist);
         }
+        // if (flag_.fsm_state_command == "gotoZero")
+        // {
         pubWaistMotorCmd->publish(waist_msg);
-
+        // }
+        
         timer3 = timer.currentTime() - start_time - timer1 - timer2;
         sleep2Time = start_time + period;
         sleep2Time_spec = sleep2Time.toTimeSpec();
