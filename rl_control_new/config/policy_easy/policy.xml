@@ -19,7 +19,7 @@
 				</port>
 			</output>
 		</layer>
-		<layer id="2" name="/actor/actor.0/Gemm/WithoutBiases" type="MatMul" version="opset1">
+		<layer id="2" name="/actor/0/Gemm/WithoutBiases" type="MatMul" version="opset1">
 			<data transpose_a="false" transpose_b="true" />
 			<input>
 				<port id="0" precision="FP32">
@@ -88,7 +88,7 @@
 				</port>
 			</output>
 		</layer>
-		<layer id="8" name="/actor/actor.0/Gemm" type="Add" version="opset1">
+		<layer id="8" name="/actor/0/Gemm" type="Add" version="opset1">
 			<data auto_broadcast="numpy" />
 			<input>
 				<port id="0" precision="FP32">
@@ -100,13 +100,13 @@
 				</port>
 			</input>
 			<output>
-				<port id="2" precision="FP32" names="/actor/actor.0/Gemm_output_0">
+				<port id="2" precision="FP32" names="/actor/0/Gemm_output_0">
 					<dim>1</dim>
 					<dim>512</dim>
 				</port>
 			</output>
 		</layer>
-		<layer id="9" name="/actor/actor.1/Elu" type="Elu" version="opset1">
+		<layer id="9" name="/actor/1/Elu" type="Elu" version="opset1">
 			<data alpha="1" />
 			<input>
 				<port id="0" precision="FP32">
@@ -115,7 +115,7 @@
 				</port>
 			</input>
 			<output>
-				<port id="1" precision="FP32" names="/actor/actor.1/Elu_output_0">
+				<port id="1" precision="FP32" names="/actor/1/Elu_output_0">
 					<dim>1</dim>
 					<dim>512</dim>
 				</port>
@@ -130,7 +130,7 @@
 				</port>
 			</output>
 		</layer>
-		<layer id="11" name="/actor/actor.2/Gemm/WithoutBiases" type="MatMul" version="opset1">
+		<layer id="11" name="/actor/2/Gemm/WithoutBiases" type="MatMul" version="opset1">
 			<data transpose_a="false" transpose_b="true" />
 			<input>
 				<port id="0" precision="FP32">
@@ -199,7 +199,7 @@
 				</port>
 			</output>
 		</layer>
-		<layer id="17" name="/actor/actor.2/Gemm" type="Add" version="opset1">
+		<layer id="17" name="/actor/2/Gemm" type="Add" version="opset1">
 			<data auto_broadcast="numpy" />
 			<input>
 				<port id="0" precision="FP32">
@@ -211,13 +211,13 @@
 				</port>
 			</input>
 			<output>
-				<port id="2" precision="FP32" names="/actor/actor.2/Gemm_output_0">
+				<port id="2" precision="FP32" names="/actor/2/Gemm_output_0">
 					<dim>1</dim>
 					<dim>256</dim>
 				</port>
 			</output>
 		</layer>
-		<layer id="18" name="/actor/actor.1_1/Elu" type="Elu" version="opset1">
+		<layer id="18" name="/actor/3/Elu" type="Elu" version="opset1">
 			<data alpha="1" />
 			<input>
 				<port id="0" precision="FP32">
@@ -226,7 +226,7 @@
 				</port>
 			</input>
 			<output>
-				<port id="1" precision="FP32" names="/actor/actor.1_1/Elu_output_0">
+				<port id="1" precision="FP32" names="/actor/3/Elu_output_0">
 					<dim>1</dim>
 					<dim>256</dim>
 				</port>
@@ -241,7 +241,7 @@
 				</port>
 			</output>
 		</layer>
-		<layer id="20" name="/actor/actor.4/Gemm/WithoutBiases" type="MatMul" version="opset1">
+		<layer id="20" name="/actor/4/Gemm/WithoutBiases" type="MatMul" version="opset1">
 			<data transpose_a="false" transpose_b="true" />
 			<input>
 				<port id="0" precision="FP32">
@@ -310,7 +310,7 @@
 				</port>
 			</output>
 		</layer>
-		<layer id="26" name="/actor/actor.4/Gemm" type="Add" version="opset1">
+		<layer id="26" name="/actor/4/Gemm" type="Add" version="opset1">
 			<data auto_broadcast="numpy" />
 			<input>
 				<port id="0" precision="FP32">
@@ -322,13 +322,13 @@
 				</port>
 			</input>
 			<output>
-				<port id="2" precision="FP32" names="/actor/actor.4/Gemm_output_0">
+				<port id="2" precision="FP32" names="/actor/4/Gemm_output_0">
 					<dim>1</dim>
 					<dim>128</dim>
 				</port>
 			</output>
 		</layer>
-		<layer id="27" name="/actor/actor.1_2/Elu" type="Elu" version="opset1">
+		<layer id="27" name="/actor/5/Elu" type="Elu" version="opset1">
 			<data alpha="1" />
 			<input>
 				<port id="0" precision="FP32">
@@ -337,7 +337,7 @@
 				</port>
 			</input>
 			<output>
-				<port id="1" precision="FP32" names="/actor/actor.1_2/Elu_output_0">
+				<port id="1" precision="FP32" names="/actor/5/Elu_output_0">
 					<dim>1</dim>
 					<dim>128</dim>
 				</port>
@@ -352,7 +352,7 @@
 				</port>
 			</output>
 		</layer>
-		<layer id="29" name="/actor/actor.6/Gemm/WithoutBiases" type="MatMul" version="opset1">
+		<layer id="29" name="/actor/6/Gemm/WithoutBiases" type="MatMul" version="opset1">
 			<data transpose_a="false" transpose_b="true" />
 			<input>
 				<port id="0" precision="FP32">
