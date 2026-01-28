@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>rl_control_new</name>
+  <version>0.0.0</version>
+  <description>The rl_control_new package for ROS2</description>
+
+  <!-- One maintainer tag required, multiple allowed, one person per tag -->
+  <maintainer email="jack@todo.todo">jack</maintainer>
+
+  <!-- One license tag required, multiple allowed, one license per tag -->
+  <license>TODO</license>
+
+  <!-- Url tags are optional, but multiple are allowed, one per tag -->
+  <!-- <url type="website">http://wiki.ros.org/rl_control_new</url> -->
+
+  <!-- Author tags are optional, multiple are allowed, one per tag -->
+  <!-- <author email="jane.doe@example.com">Jane Doe</author> -->
+
+  <!-- ROS2 build tool -->
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <!-- Build dependencies -->
+  <depend>rclcpp</depend>
+  <depend>rclpy</depend>
+  <depend>std_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>bodyctrl_msgs</depend>z
+  <depend>pluginlib</depend>
+  <depend>eigen3_cmake_module</depend>
+  <depend>yaml-cpp</depend>
+  <depend>ament_index_cpp</depend>
+  <depend>x_humanoid_rl_sdk</depend>
+
+  <!-- Test dependencies -->
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <!-- Export information -->
+  <export>
+    <build_type>ament_cmake</build_type>
+    <pluginlib plugin="${prefix}/rlctrlnew_plugin.xml" />
+  </export>
+</package>

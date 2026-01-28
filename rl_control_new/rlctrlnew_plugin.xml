@@ -1,0 +1,7 @@
+<library path="lib/librlctrlnew_plugin">
+  <class name="rl_control_new/RLControlNew" type="rl_control_new::RLControlNewPlugin" base_class_type="rclcpp::Node">
+    <description> 
+      A ROS2 node for humanoid robot RL control with FSM-based policy management.
+    </description>
+  </class>
+</library>
