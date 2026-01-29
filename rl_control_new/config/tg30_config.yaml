@@ -56,7 +56,7 @@ joystick:
 simulation: false # 是否在仿真环境下运行 (Whether to run in simulation environment)
 
 mlp:
-  path: /config/policy/policy
+  path: /config/policy_omni/omni_movebox_actions
 
 reference_motion:
   motion_path: /config/refer.yaml

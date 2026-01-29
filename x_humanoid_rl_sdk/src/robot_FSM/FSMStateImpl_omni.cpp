@@ -1,12 +1,14 @@
 #include "FSMStateImpl.h"
 #include <yaml-cpp/yaml.h>
 #include <ament_index_cpp/get_package_share_directory.hpp>
+#include <iostream>
+#include <algorithm>
 #include <pinocchio/parsers/urdf.hpp>
 #include <pinocchio/algorithm/kinematics.hpp>
 #include <pinocchio/algorithm/frames.hpp>
 #include <pinocchio/algorithm/model.hpp>
 #include <pinocchio/algorithm/joint-configuration.hpp>
-----------------------------------------------------------
+// -----------------------------------------------------------------------------
 // This file implements FSM (Finite State Machine) states for humanoid deployment.
 // The FSM consists of three main states:
 //   1) ZERO : Move robot to a safe nominal posture
@@ -32,11 +34,11 @@ const int tienkung_pro_dof = 30;
 // Index    : Feature                 (Dim)
 // ----------------------------------------
 // 0-59      : [1] motion_command        (60)
-// 60-62      : [2] motion_ref_ori_b       (3)
-// 63-68      : [3] base_ang_vel          (6)
-// 69-98     : [4] Joint positions         (30)
-// 99-128    : [5] Joint velocities        (30)
-// 129-159    : [6] Previous actions        (30)
+// 60-65     : [2] motion_ref_ori_b      (6)
+// 66-68     : [3] base_ang_vel          (3)
+// 69-98     : [4] Joint positions       (30)
+// 99-128    : [5] Joint velocities      (30)
+// 129-158   : [6] Previous actions      (30)
 // Total per-frame = 159
 
 // 2) History stacking
@@ -50,6 +52,47 @@ ov::Core core;
 std::shared_ptr<ov::Model> model;
 ov::CompiledModel compiled_model;
 ov::InferRequest infer_request;
+
+ReferenceMotion g_ref_motion;
+
+bool has_time_input = false;
+std::vector<float> time_input_vec;
+ov::Tensor ov_in_tensor1;
+
+namespace {
+size_t ShapeSize(const ov::Shape& shape) {
+  size_t size = 1;
+  for (auto dim : shape) {
+    size *= dim;
+  }
+  return size;
+}
+
+void LogObsBlockMinMax(const char *label,
+                       const std::vector<float> &vec,
+                       size_t start,
+                       size_t count) {
+  if (count == 0 || start >= vec.size()) {
+    std::cout << "[Obs] " << label << " empty" << std::endl;
+    return;
+  }
+  size_t end = start + count;
+  if (end > vec.size()) {
+    end = vec.size();
+  }
+  auto begin_it = vec.begin() + static_cast<std::ptrdiff_t>(start);
+  auto end_it = vec.begin() + static_cast<std::ptrdiff_t>(end);
+  auto minmax = std::minmax_element(begin_it, end_it);
+  std::cout << "[Obs] " << label << " [" << start << ":" << (end - 1)
+            << "] min=" << *minmax.first << " max=" << *minmax.second << std::endl;
+}
+
+ReferenceMotion::Output ref_motion_cache;
+bool ref_motion_ready = false;
+int motion_timestep = 0;
+bool pinocchio_ready = false;
+int ref_body_frame_id = -1;
+} // namespace
 
 // Input buffer for the policy network.
 // The memory is directly bound to OpenVINO tensor.
@@ -70,14 +113,17 @@ Eigen::VectorXd zero_pos = Eigen::VectorXd::Zero(tienkung_pro_dof);
 bool ReferenceMotion::Load(const std::string& config_file) {
   YAML::Node root = YAML::LoadFile(config_file);
 
-  YAML::Node ref_joint_pos  = root["joint_pos"];
-  YAML::Node ref_joint_vel  = root["joint_vel"];
-  YAML::Node ref_body_pos_w = root["body_pos_w"];
+  YAML::Node ref_joint_pos = root["joint_pos"];
+  YAML::Node ref_joint_vel = root["joint_vel"];
+  YAML::Node ref_body_quat_w = root["body_quat_w"];
+  if (!ref_body_quat_w || !ref_body_quat_w.IsSequence()) {
+    ref_body_quat_w = root["body_pos_w"];
+  }
 
   // 기본 체크
   if (!ref_joint_pos || !ref_joint_pos.IsSequence() || ref_joint_pos.size() == 0) return false;
   if (!ref_joint_vel || !ref_joint_vel.IsSequence() || ref_joint_vel.size() != ref_joint_pos.size()) return false;
-  if (!ref_body_pos_w || !ref_body_pos_w.IsSequence() || ref_body_pos_w.size() != ref_joint_pos.size()) return false;
+  if (!ref_body_quat_w || !ref_body_quat_w.IsSequence() || ref_body_quat_w.size() != ref_joint_pos.size()) return false;
 
   seq_size_ = (int)ref_joint_pos.size();
 
@@ -91,7 +137,7 @@ bool ReferenceMotion::Load(const std::string& config_file) {
   for (int k = 0; k < seq_size_; ++k) {
     YAML::Node row_pos  = ref_joint_pos[k];
     YAML::Node row_vel  = ref_joint_vel[k];
-    YAML::Node row_body = ref_body_pos_w[k];
+    YAML::Node row_body = ref_body_quat_w[k];
 
     if (!row_pos.IsSequence() || (int)row_pos.size() != tienkung_pro_dof) return false;
     if (!row_vel.IsSequence() || (int)row_vel.size() != tienkung_pro_dof) return false;
@@ -148,21 +194,50 @@ void FSMInit(const std::string& config_file) {
   std::string mlp_path = package_path + relative_path;
 
   // Load OpenVINO IR model (.xml + .bin)
-  cmodel = core.read_model(mlp_path + ".xml",  mlp_path + ".bin");
+  model = core.read_model(mlp_path + ".xml",  mlp_path + ".bin");
 
   // Compile model for CPU execution
-  compiled_model = core.compile_model(cmodel, "CPU");
+  compiled_model = core.compile_model(model, "CPU");
   infer_request = compiled_model.create_infer_request();
 
   // Restrict CPU threads to reduce timing jitter during deployment
   core.set_property("CPU", ov::inference_num_threads(1)); 
 
-  // Bind preallocated input tensor
-  infer_request.set_input_tensor(0, ov_in_tensor0);
+  const auto inputs = compiled_model.inputs();
+  if (inputs.empty()) {
+    std::cerr << "[MLP] No input tensors found in model." << std::endl;
+    has_time_input = false;
+    time_input_vec.clear();
+  } else {
+    const auto obs_shape = inputs[0].get_shape();
+    if (!obs_shape.empty()) {
+      size_t obs_dim = obs_shape.back();
+      if (obs_dim != static_cast<size_t>(obs_num)) {
+        std::cerr << "[MLP] obs dim mismatch: model expects " << obs_dim
+                  << ", code uses " << obs_num << std::endl;
+      }
+    }
+
+    // Bind preallocated input tensor
+    infer_request.set_input_tensor(0, ov_in_tensor0);
+
+    has_time_input = inputs.size() > 1;
+    if (has_time_input) {
+      const auto time_shape = inputs[1].get_shape();
+      time_input_vec.assign(ShapeSize(time_shape), 0.0f);
+      ov_in_tensor1 = ov::Tensor(ov::element::f32, time_shape, time_input_vec.data());
+      infer_request.set_input_tensor(1, ov_in_tensor1);
+    } else {
+      time_input_vec.clear();
+    }
+  }
 
   // Warm-up inference to avoid first-step latency spikes
   for (int i = 0; i < 3; i++) {
     std::cout << "MLP forward: " << i << std::endl;
+    if (has_time_input && !time_input_vec.empty()) {
+      time_input_vec[0] = 0.0f;
+    }
     // Run a single forward pass of the policy network.
     infer_request.infer();
   }
@@ -223,8 +298,11 @@ void StateZero::Run(xbox_flag &flag) {
   // Periodically run dummy inference to keep the model "warm" even when policy control is not active.
   
 
-  if ((int) (timer / dt_) % freq_ratio_ == 0) {
-    auto refer_motion = SpecificRun(0)
+  if ((int)(timer / dt_) % freq_ratio_ == 0) {
+    if (has_time_input && !time_input_vec.empty()) {
+      time_input_vec[0] = 0.0f;
+      infer_request.set_input_tensor(1, ov_in_tensor1);
+    }
     infer_request.set_input_tensor(0, ov_in_tensor0);
     infer_request.infer();
   }
@@ -302,6 +380,24 @@ void StateMLP::OnEnter() {
               0.0, 0.1, 0.0, -0.3, 0.0, 0.0, 0.0,       // left arm:  "l_shoulder_pitch", "l_shoulder_roll", "l_shoulder_yaw", "l_elbow", "l_wrist_yaw", "l_wrist_pitch", "l_wrist_roll",
               0.0, -0.1, -0.0, -0.3, 0.0, 0.0, 0.0;     // right arm: "r_shoulder_pitch", "r_shoulder_roll", "r_shoulder_yaw", "r_elbow", "r_wrist_yaw", "r_wrist_pitch", "r_wrist_roll"
 
+  ref_motion_ready = false;
+  motion_timestep = 0;
+  g_ref_motion.Reset();
+
+  if (!pinocchio_ready) {
+    std::string package_path = ament_index_cpp::get_package_share_directory("rl_control_new");
+    std::string urdf_path = package_path + "/config/urdf_folder/urdf/tiangong2.0_pro_urdf.urdf";
+    std::ifstream urdf_file(urdf_path);
+    if (!urdf_file.is_open()) {
+      std::cerr << "[Pinocchio] URDF not found: " << urdf_path << std::endl;
+    } else {
+      pinocchio_model = pinocchio::urdf::buildModel(urdf_path, pinocchio::JointModelFreeFlyer());
+      pinocchio_robot_data = pinocchio::Data(pinocchio_model);
+      ref_body_frame_id = pinocchio_model.getFrameId("body_yaw_link");
+      pinocchio_ready = true;
+    }
+  }
+
   action_last.setZero();
   // Reset previous action history
   last_action_d.setZero();
@@ -312,30 +408,52 @@ void StateMLP::OnEnter() {
 
 
 void StateMLP::Run(xbox_flag &flag) {
-// motion_command -> joint_pos [0-29]
-// current_obs_buffer_dict["motion_command"] = self.motion_command_t
-  if ((int) (timer / dt_) % freq_ratio_ == 0) {
-    auto refer_motion = g_ref_motion.Run();
+  const bool do_infer = ((int)(timer / dt_) % freq_ratio_ == 0);
+
+  if (do_infer) {
+    ref_motion_cache = g_ref_motion.Run();
+    ref_motion_ready = (ref_motion_cache.joint_pos.size() == joint_num_);
+  }
+  if (!ref_motion_ready) {
+    ref_motion_cache = g_ref_motion.SpecificRun(0);
+    ref_motion_ready = (ref_motion_cache.joint_pos.size() == joint_num_);
+  }
+
+  Eigen::VectorXd ref_joint_pos = Eigen::VectorXd::Zero(joint_num_);
+  Eigen::VectorXd ref_joint_vel = Eigen::VectorXd::Zero(joint_num_);
+  if (ref_motion_cache.joint_pos.size() == joint_num_) {
+    ref_joint_pos = ref_motion_cache.joint_pos;
+  }
+  if (ref_motion_cache.joint_vel.size() == joint_num_) {
+    ref_joint_vel = ref_motion_cache.joint_vel;
   }
 
   for (int i = 0; i < joint_num_; i++) {
-    input_vec[i] = (float)refer_motion.joint_pos(7 + i); // 0~29
+    input_vec[i] = static_cast<float>(ref_joint_pos(i));
   }
   for (int i = 0; i < joint_num_; i++) {
-    input_vec[29 + i] = (float)refer_motion.joint_vel(6 + i); // 30~59 
+    input_vec[30 + i] = static_cast<float>(ref_joint_vel(i));
   }
 
-  Eigen::Vector4d motion_ref_ori_1 = refer_motion.body_pos_w; // wxyz
+  Eigen::Vector4d motion_ref_ori_1(1.0, 0.0, 0.0, 0.0);
+  if (ref_motion_cache.body_pos_w.size() == 4) {
+    motion_ref_ori_1 = ref_motion_cache.body_pos_w;
+  }
   double motion_yaw_offset = quat_yaw(motion_ref_ori_1);
   Eigen::Vector4d motion_ref_ori_2 = remove_yaw_offset(motion_ref_ori_1, motion_yaw_offset);
 
-  Eigen::Vector3d root_pos = Eigen::Vector3d::Zero(3);
-  Eigen::Vector4d root_ori_xyzw = robot_data_->imu_data_.tail(4); //xyzw
-
+  Eigen::Vector3d root_pos = Eigen::Vector3d::Zero();
+  Eigen::Vector4d root_ori_xyzw = robot_data_->imu_data_.tail(4); // xyzw
 
   Eigen::VectorXd c(root_pos.size() + root_ori_xyzw.size());
-  Eigen::VectorXd c.head(a.size()) = root_pos;
-  Eigen::VectorXd c.tail(b.size()) = root_ori_xyzw;
+  c.head(root_pos.size()) = root_pos;
+  c.tail(root_ori_xyzw.size()) = root_ori_xyzw;
+
+  const std::vector<int> mujoco_to_isaac_idx = {
+    12, 0, 6, 13, 16, 23, 1, 7, 14, 17,
+    24, 2, 8, 15, 18, 25, 3, 9, 19, 26,
+    4, 10, 20, 27, 5, 11, 21, 28, 22, 29
+  };
 
   Eigen::VectorXd dof_pos_in_pinocchio = Eigen::VectorXd::Zero(joint_num_);
   for (int i = 0; i < joint_num_; i++) {
@@ -344,17 +462,19 @@ void StateMLP::Run(xbox_flag &flag) {
   }
 
   Eigen::VectorXd configuration(c.size() + dof_pos_in_pinocchio.size());
-  Eigen::VectorXd configuration.head(c.size()) = c;
-  Eigen::VectorXd configuration.tail(dof_pos_in_pinocchio.size()) = dof_pos_in_pinocchio;
+  configuration.head(c.size()) = c;
+  configuration.tail(dof_pos_in_pinocchio.size()) = dof_pos_in_pinocchio;
 
-  pinocchio::framesForwardKinematics(pinocchio_model, pinocchio_robot_data, configuration);
-  ref_body_pose_in_world = pinocchio_robot_data.oMf[ref_body_frame_id];
-  auto quaternion = pinocchio::Quaternion(ref_body_pose_in_world.rotation);
-  auto ref_ori_xyzw = quaternion.coeffs();
-  
-  Eigen::Vector4d robot_ref_ori_1 = Eigen::Vector4d(ref_ori_xyzw(3),ref_ori_xyzw(1),ref_ori_xyzw(2),ref_ori_xyzw(0))
-  double robot_yaw_offset = quat_yaw(robot_ref_ori_1)
-  Eigen::Vector4d robot_ref_ori_2 = remove_yaw_offset(robot_ref_ori_1, robot_yaw_offset);
+  Eigen::Vector4d robot_ref_ori_2(1.0, 0.0, 0.0, 0.0);
+  if (pinocchio_ready && ref_body_frame_id >= 0) {
+    pinocchio::framesForwardKinematics(pinocchio_model, pinocchio_robot_data, configuration);
+    const auto &ref_body_pose_in_world = pinocchio_robot_data.oMf[ref_body_frame_id];
+    auto quaternion = pinocchio::Quaternion(ref_body_pose_in_world.rotation());
+    auto ref_ori_xyzw = quaternion.coeffs();
+    Eigen::Vector4d robot_ref_ori_1(ref_ori_xyzw(3), ref_ori_xyzw(0), ref_ori_xyzw(1), ref_ori_xyzw(2));
+    double robot_yaw_offset = quat_yaw(robot_ref_ori_1);
+    robot_ref_ori_2 = remove_yaw_offset(robot_ref_ori_1, robot_yaw_offset);
+  }
 
   Eigen::Vector4d transformed = subtract_frame_transforms(robot_ref_ori_2, motion_ref_ori_2);
   Eigen::Matrix3d motion_ref_ori_b = matrix_from_quat(transformed);
@@ -405,28 +525,35 @@ void StateMLP::Run(xbox_flag &flag) {
   }
   clip(action_last, -100.0, 100.0);
   for (int i = 0; i < action_num; i++) {
-      input_vec[129 + i] = action_last(i);
+    input_vec[129 + i] = action_last(i);
   }
-  if ((int)(timer / dt_) % freq_ratio_ == 0) {
-      if (first_Run) {
-          first_Run = false;
-      } else {
-          std::vector<float> new_obs(input_vec.begin(), input_vec.begin() + 159);
-          std::move(input_vec.begin() + 105, input_vec.end(), input_vec.begin());
-          std::copy(new_obs.begin(), new_obs.end(), input_vec.end() - 159);
-      }
-  }
-  std::vector<int> isaac_to_mujoco_idx = {
+
+  const std::vector<int> isaac_to_mujoco_idx = {
     1, 6, 11, 16, 20, 24, 2, 7, 12, 17,
-    21, 25, 0, 3, 8, 13, 4, 9, 14, 18, 
+    21, 25, 0, 3, 8, 13, 4, 9, 14, 18,
     22, 26, 28, 5, 10, 15, 19, 23, 27, 29
   };
 
-  if ((int) (timer / dt_) % freq_ratio_ == 0) {
-  // Copy the full stacked observation history (1050 floats) into the OpenVINO tensor.
-  for (size_t i = 0; i < ov_in_tensor0.get_size(); ++i) {
-    ov_in_tensor0.data<float>()[i] = input_vec[i];
-  }
+  if (do_infer) {
+    static int debug_log_count = 0;
+    const int debug_log_stride = 10;
+    if ((debug_log_count++ % debug_log_stride) == 0) {
+      std::cout << "[Obs] step=" << motion_timestep << std::endl;
+      LogObsBlockMinMax("motion_command", input_vec, 0, 60);
+      LogObsBlockMinMax("motion_ref_ori_b", input_vec, 60, 6);
+      LogObsBlockMinMax("base_ang_vel", input_vec, 66, 3);
+      LogObsBlockMinMax("dof_pos", input_vec, 69, 30);
+      LogObsBlockMinMax("dof_vel", input_vec, 99, 30);
+      LogObsBlockMinMax("prev_actions", input_vec, 129, 30);
+    }
+    // Copy the 159-dim observation into the OpenVINO tensor.
+    for (size_t i = 0; i < ov_in_tensor0.get_size(); ++i) {
+      ov_in_tensor0.data<float>()[i] = input_vec[i];
+    }
+    if (has_time_input && !time_input_vec.empty()) {
+      time_input_vec[0] = static_cast<float>(motion_timestep);
+      infer_request.set_input_tensor(1, ov_in_tensor1);
+    }
     infer_request.set_input_tensor(0, ov_in_tensor0);
 
     // Run policy inference (OpenVINO). Output is typically normalized joint targets.
@@ -438,6 +565,7 @@ void StateMLP::Run(xbox_flag &flag) {
     for (int i = 0; i < ov_out_tensor.get_size(); i++) {
       output_data_mlp(i) = ov_out_data[i];
     }
+    motion_timestep++;
   }
   Eigen::VectorXd mlp_out = output_data_mlp.head(action_num);
   Eigen::VectorXd mlp_out_reordered = Eigen::VectorXd::Zero(action_num);
@@ -465,4 +593,3 @@ void StateMLP::Run(xbox_flag &flag) {
   // Transform desired base commands into the frame expected by the low-level controller.
   robot_data_->q_d_.segment(0, 3) = Rb_w.transpose() * robot_data_->q_d_.segment(0, 3);
 }
-
