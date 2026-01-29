@@ -57,3 +57,6 @@ simulation: false # 是否在仿真环境下运行 (Whether to run in simulation
 
 mlp:
   path: /config/policy/policy
+
+reference_motion:
+  motion_path: /config/refer.yaml

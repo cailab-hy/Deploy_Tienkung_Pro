@@ -204,7 +204,7 @@ void StateZero::OnEnter() {
   init_joint_pos = robot_data_->q_a_.tail(joint_num_);
   std::cout << "enter zero" << std::endl;
 
-  const std::string filename = TODO;
+  const std::string filename = "/home/cai/Deploy_Tienkung_Pro/rl_control_new/config/urdf_folder/urdf/tiangong2.0_pro_urdf.urdf";
   std::ifstream file;
   file.open(filename.c_str());
   std::string filestr((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
