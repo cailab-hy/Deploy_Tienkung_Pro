@@ -15,6 +15,9 @@ find_package(sensor_msgs REQUIRED)
 # 查找OpenVINO包
 find_package(OpenVINO REQUIRED)
 find_package (Eigen3 3.0.0 REQUIRED)
+find_package (pinocchio REQUIRED)
+
+
 
 include_directories(
   "${CMAKE_CURRENT_SOURCE_DIR}/include"
@@ -45,6 +48,7 @@ target_link_libraries(${PROJECT_NAME}
     yaml-cpp
     openvino
     openvino_c
+    pinocchio::pinocchio
 )
 # ROS2 dependencies
 ament_target_dependencies(${PROJECT_NAME}
@@ -53,6 +57,7 @@ ament_target_dependencies(${PROJECT_NAME}
   bodyctrl_msgs
   Eigen3
   sensor_msgs
+  pinocchio
 )
 # 设置目标目录
 set(PLUGIN_TARGET_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../rl_control_new/src/plugins/${PROJECT_NAME})

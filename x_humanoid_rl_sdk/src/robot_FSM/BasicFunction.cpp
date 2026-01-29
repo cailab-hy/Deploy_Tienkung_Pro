@@ -14,9 +14,9 @@ Eigen::Vector4d rpy_to_quat(const double r, const double p, const double y) {
 
   const double w = cr * cp * cy + sr * sp * sy;
   const double x = sr * cp * cy - cr * sp * sy;
-  const double y = cr * sp * cy + sr * cp * sy;
+  const double ya = cr * sp * cy + sr * cp * sy;
   const double z = cr * cp * sy - sr * sp * cy;
-  return Eigen::Vector4d(w,x,y,z);
+  return Eigen::Vector4d(w,x,ya,z);
 }
 
 Eigen::Matrix3d matrix_from_quat(const Eigen::Vector4d& q_wxyz) {
@@ -64,13 +64,13 @@ Eigen::Vector4d quat_mul(const Eigen::Vector4d& a,
 }
 
 Eigen::Vector4d remove_yaw_offset(const Eigen::Vector4d& quat_wxyz, const double yaw_offset){
-  Eigen::Vector4d yaw_quat = rpy_to_quat(0.0, 0.0, -yaw_offset)
-  Eigen::Vector4d result = quat_mul(yaw_quat, quat_wxyz)
-  return result
+  Eigen::Vector4d yaw_quat = rpy_to_quat(0.0, 0.0, -yaw_offset);
+  Eigen::Vector4d result = quat_mul(yaw_quat, quat_wxyz);
+  return result;
 }
 
 double quat_yaw(const Eigen::Vector4d& q_in) {
-  Eigen::Quaterniond q = q_in;
+  Eigen::Quaterniond q(q_in(0),q_in(1),q_in(2),q_in(3));
   const double w = q.w();
   const double x = q.x();
   const double y = q.y();
@@ -92,7 +92,7 @@ double quat_yaw(const Eigen::Vector4d& q_in) {
   const double yaw = std::atan2(siny_cosp, cosy_cosp);
 
   // return Eigen::Vector3d(roll, pitch, yaw);
-  return yaw
+  return yaw;
 }
 
 Eigen::Matrix3d RotX(double x) {

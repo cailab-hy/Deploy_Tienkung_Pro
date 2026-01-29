@@ -9,6 +9,7 @@ Eigen::Vector4d rpy_to_quat(const double r, const double p, const double y);
 Eigen::Vector4d quat_mul(const Eigen::Vector4d& a, const Eigen::Vector4d& b);
 Eigen::Vector4d subtract_frame_transforms(const Eigen::Vector4d& q01,const Eigen::Vector4d& b);
 Eigen::Matrix3d matrix_from_quat(const Eigen::Vector4d& q_wxyz);
+Eigen::Vector4d remove_yaw_offset(const Eigen::Vector4d& quat_wxyz, const double yaw_offset);
 
 Eigen::Matrix3d RotX(double x);
 Eigen::Matrix3d RotY(double y);

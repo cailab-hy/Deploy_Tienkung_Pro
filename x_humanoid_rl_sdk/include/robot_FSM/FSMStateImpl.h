@@ -9,21 +9,26 @@
 #include <openvino/runtime/core.hpp>
 #include <fstream>
 
+#include <pinocchio/parsers/urdf.hpp>
+#include <pinocchio/algorithm/kinematics.hpp>
+#include <pinocchio/algorithm/frames.hpp>
+#include <pinocchio/algorithm/model.hpp>
+#include <pinocchio/algorithm/joint-configuration.hpp>
 
 class ReferenceMotion {
 public:
   bool Load(const std::string& config_file);
 
-  void Reset();                 // current_frame_ = 0
-  Output Run();                 // 현재 프레임 반환 + current_frame_++
-  Output SpecificRun(int motion_time) const;   // const: 내부 상태를 안 바꾸는 “조회” 함수
-  
   struct Output {
     Eigen::VectorXd joint_pos;
     Eigen::VectorXd joint_vel;
     Eigen::VectorXd body_pos_w;
   };
 
+  void Reset();                 // current_frame_ = 0
+  Output Run();                 // 현재 프레임 반환 + current_frame_++
+  Output SpecificRun(int motion_time) const;   // const: 내부 상태를 안 바꾸는 “조회” 함수
+  
 private:
   bool loaded_ = false;
   int seq_size_ = 0;
@@ -97,6 +102,7 @@ class StateMLP : public FSMState {
   bool first_Run = true;
   Eigen::VectorXd baseLinVel_Est = Eigen::VectorXd::Zero(3);
   Eigen::VectorXd baseLinVel_Est_last = Eigen::VectorXd::Zero(3);
+  ReferenceMotion::Output refer_motion;
 
   pinocchio::Model pinocchio_model;
   pinocchio::Data pinocchio_robot_data;
