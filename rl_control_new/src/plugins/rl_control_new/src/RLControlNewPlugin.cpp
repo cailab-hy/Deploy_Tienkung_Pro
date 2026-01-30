@@ -49,6 +49,11 @@ bool RLControlNewPlugin::LoadConfig(const std::string &_config_file)
     action_num = config_["actions_size"].as<int>();
     motor_num = config_["motor_num"].as<int>();
     simulation = config_["simulation"].as<bool>();
+    dry_run = config_["dry_run"] ? config_["dry_run"].as<bool>() : false;
+    if (dry_run)
+    {
+        RCLCPP_WARN(this->get_logger(), "[DryRun] enabled: motor commands will NOT be published.");
+    }
 
     dt = config_["dt"].as<double>();
     ct_scale = Eigen::Map<Eigen::VectorXd>(config_["ct_scale"].as<std::vector<double>>().data(), motor_num);
@@ -513,7 +518,10 @@ void RLControlNewPlugin::rlControl()
 
                 waist_msg.cmds.push_back(cmd);
             }
-            waists_cmd_pub_->publish(waist_msg);
+            if (!dry_run)
+            {
+                waists_cmd_pub_->publish(waist_msg);
+            }
         }
 
         // rl fsm
@@ -529,6 +537,16 @@ void RLControlNewPlugin::rlControl()
         q_d = robot_data.q_d_.tail(motor_num);
         qdot_d = robot_data.q_dot_d_.tail(motor_num);
         tor_d = robot_data.tau_d_.tail(motor_num);
+        {
+            const auto fsm_state = robot_fsm->getCurrentState();
+            RCLCPP_INFO_THROTTLE(
+                this->get_logger(),
+                *this->get_clock(),
+                1000,
+                "[FSM] cmd=%s state=%d",
+                flag_.fsm_state_command.c_str(),
+                static_cast<int>(fsm_state));
+        }
 
         if (!simulation)
         {
@@ -559,6 +577,21 @@ void RLControlNewPlugin::rlControl()
             Qdot_d(i) = qdot_d(i) * motor_dir(i);
             Tor_d(i) = tor_d(i) * motor_dir(i);
         }
+        {
+            static const std::vector<int> arm_indices = {16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29};
+            if (arm_indices.size() >= 4)
+            {
+                RCLCPP_INFO_THROTTLE(
+                    this->get_logger(),
+                    *this->get_clock(),
+                    1000,
+                    "[Arm q_d] i16=%.6f i17=%.6f i18=%.6f i19=%.6f",
+                    q_d(arm_indices[0]),
+                    q_d(arm_indices[1]),
+                    q_d(arm_indices[2]),
+                    q_d(arm_indices[3]));
+            }
+        }
 
         if (robot_fsm->disable_joints_)
         {
@@ -586,7 +619,13 @@ void RLControlNewPlugin::rlControl()
             cmd.tor = tau_cmd_midVec(i);
             leg_msg.cmds.push_back(cmd);
         }
-        pubLegMotorCmd->publish(leg_msg);
+        // pubLegMotorCmd->publish(leg_msg); // -> 주석 처리됨
+        if (flag_.fsm_state_command == "gotoZero"){
+           if (!dry_run)
+           {
+               pubLegMotorCmd->publish(leg_msg);
+           }
+        }
         
         // Arm control
         bodyctrl_msgs::msg::CmdMotorCtrl arm_msg;
@@ -605,7 +644,26 @@ void RLControlNewPlugin::rlControl()
             arm_msg.cmds.push_back(cmd_arm);
             // RCLCPP_WARN(this->get_logger(), "[KP] %f [KD] %f [Pose] %f [Speed] %f [Torque] %f",cmd_arm.kp, cmd_arm.kd, cmd_arm.pos,cmd_arm.spd,cmd_arm.tor);
         }
-        pubArmMotorCmd->publish(arm_msg);
+        if (!dry_run)
+        {
+            pubArmMotorCmd->publish(arm_msg); // -> 주석 처리됨
+        }
+        if (!arm_msg.cmds.empty())
+        {
+            const auto &cmd = arm_msg.cmds.front();
+            RCLCPP_INFO_THROTTLE(
+                this->get_logger(),
+                *this->get_clock(),
+                100,
+                "[ArmCmd] id=%d kp=%.3f kd=%.3f pos=%.6f spd=%.6f tor=%.6f (count=%zu)",
+                cmd.name,
+                cmd.kp,
+                cmd.kd,
+                cmd.pos,
+                cmd.spd,
+                cmd.tor,
+                arm_msg.cmds.size());
+        }
         
         // Head control
         bodyctrl_msgs::msg::CmdMotorCtrl head_msg;
@@ -623,7 +681,10 @@ void RLControlNewPlugin::rlControl()
             cmd_head.tor = tau_cmd_midVec(index);
             head_msg.cmds.push_back(cmd_head);
         }
-        pubHeadMotorCmd->publish(head_msg);
+        // pubHeadMotorCmd->publish(head_msg); // -> 주석 처리됨
+        //if (flag_.fsm_state_command == "gotoZero"){
+        //   pubHeadMotorCmd->publish(head_msg);
+        //}
 
         // Waist control
         bodyctrl_msgs::msg::CmdMotorCtrl waist_msg;
@@ -641,7 +702,28 @@ void RLControlNewPlugin::rlControl()
             cmd_waist.tor = tau_cmd_midVec(index);
             waist_msg.cmds.push_back(cmd_waist);
         }
-        pubWaistMotorCmd->publish(waist_msg);
+        if (!dry_run)
+        {
+            pubWaistMotorCmd->publish(waist_msg); // -> 주석 처리됨
+        }
+        if (!waist_msg.cmds.empty())
+        {
+            const auto &cmd = waist_msg.cmds.front();
+            RCLCPP_INFO_THROTTLE(
+                this->get_logger(),
+                *this->get_clock(),
+                1000,
+                "[WaistCmd] id=%d kp=%.3f kd=%.3f pos=%.6f spd=%.6f tor=%.6f",
+                cmd.name,
+                cmd.kp,
+                cmd.kd,
+                cmd.pos,
+                cmd.spd,
+                cmd.tor);
+        }
+        //if (flag_.fsm_state_command == "gotoZero"){
+        //   pubWaistMotorCmd->publish(waist_msg);
+        //}
         
         timer3 = timer.currentTime() - start_time - timer1 - timer2;
         sleep2Time = start_time + period;
@@ -693,9 +775,25 @@ void RLControlNewPlugin::xbox_map_read(const sensor_msgs::msg::Joy::SharedPtr ms
 }
 
 void RLControlNewPlugin::printXboxFlag(const xbox_flag& flag) {
-    std::cout << "======= Xbox Flag Info =======" << std::endl;
-    std::cout << "fsm_state_command: " << flag.fsm_state_command << std::endl;
-    std::cout << "is_disable: " << flag.is_disable << std::endl;
+    static std::string last_cmd;
+    static bool last_disable = false;
+    static bool first = true;
+    const bool changed = first || (flag.fsm_state_command != last_cmd) || (flag.is_disable != last_disable);
+    if (changed) {
+        first = false;
+        last_cmd = flag.fsm_state_command;
+        last_disable = flag.is_disable;
+        RCLCPP_INFO(this->get_logger(), "[XboxFlag] cmd=%s disable=%d",
+                    flag.fsm_state_command.c_str(), static_cast<int>(flag.is_disable));
+        return;
+    }
+    RCLCPP_INFO_THROTTLE(
+        this->get_logger(),
+        *this->get_clock(),
+        2000,
+        "[XboxFlag] cmd=%s disable=%d",
+        flag.fsm_state_command.c_str(),
+        static_cast<int>(flag.is_disable));
   }
 } // namespace rl_control_new
 

@@ -4,7 +4,7 @@
 #define BASICFUNCTION_H_
 
 #include <Eigen/Dense>
-double quat_yaw(Eigen::Vector4d q_in);
+double quat_yaw(const Eigen::Vector4d& q_in);
 Eigen::Vector4d rpy_to_quat(const double r, const double p, const double y);
 Eigen::Vector4d quat_mul(const Eigen::Vector4d& a, const Eigen::Vector4d& b);
 Eigen::Vector4d subtract_frame_transforms(const Eigen::Vector4d& q01,const Eigen::Vector4d& b);

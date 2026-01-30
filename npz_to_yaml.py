@@ -7,7 +7,7 @@ def to_python(obj):
         return obj.tolist()
     return obj
 
-def main(npz_path, yaml_path):
+def main(npz_path, yaml_path, body_index=22):
     data = np.load(npz_path, allow_pickle=False)
 
     out = {}
@@ -17,8 +17,12 @@ def main(npz_path, yaml_path):
             out[k] = to_python(arr[:,7:])
         elif k in ["joint_vel"]:
             out[k] = to_python(arr[:,6:])
+        elif k in ["body_pos_w"]:
+            out["ref_pos_xyz"] = to_python(arr[:, body_index])
         elif k in ["body_quat_w"]:
-            out[k] = to_python(arr[:,22])
+            quat_wxyz = arr[:, body_index]
+            quat_xyzw = quat_wxyz[:, [1, 2, 3, 0]]
+            out["ref_quat_xyzw"] = to_python(quat_xyzw)
         print(k,arr.shape)
         
     with open(yaml_path, "w", encoding="utf-8") as f:
@@ -27,4 +31,10 @@ def main(npz_path, yaml_path):
     print(f"Saved: {yaml_path}")
     print("Keys:", data.files)
     
-main("/home/cai/Downloads/sub3_largebox_003_mj_walker_obj.npz", "/home/cai/Downloads/refer.yaml")
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("npz_path")
+    parser.add_argument("yaml_path")
+    parser.add_argument("--body-index", type=int, default=22)
+    args = parser.parse_args()
+    main(args.npz_path, args.yaml_path, body_index=args.body_index)

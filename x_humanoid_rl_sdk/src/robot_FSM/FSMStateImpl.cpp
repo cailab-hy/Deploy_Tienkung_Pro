@@ -66,12 +66,14 @@ bool ReferenceMotion::Load(const std::string& config_file) {
 
   YAML::Node ref_joint_pos  = root["joint_pos"];
   YAML::Node ref_joint_vel  = root["joint_vel"];
-  YAML::Node ref_body_pos_w = root["body_pos_w"];
+  YAML::Node ref_pos_xyz    = root["ref_pos_xyz"];
+  YAML::Node ref_quat_xyzw  = root["ref_quat_xyzw"];
 
   // 기본 체크
   if (!ref_joint_pos || !ref_joint_pos.IsSequence() || ref_joint_pos.size() == 0) return false;
   if (!ref_joint_vel || !ref_joint_vel.IsSequence() || ref_joint_vel.size() != ref_joint_pos.size()) return false;
-  if (!ref_body_pos_w || !ref_body_pos_w.IsSequence() || ref_body_pos_w.size() != ref_joint_pos.size()) return false;
+  if (!ref_pos_xyz || !ref_pos_xyz.IsSequence() || ref_pos_xyz.size() != ref_joint_pos.size()) return false;
+  if (!ref_quat_xyzw || !ref_quat_xyzw.IsSequence() || ref_quat_xyzw.size() != ref_joint_pos.size()) return false;
 
   seq_size_ = (int)ref_joint_pos.size();
 
@@ -80,24 +82,32 @@ bool ReferenceMotion::Load(const std::string& config_file) {
   ref_joint_vel_matrix_.resize(seq_size_, tienkung_pro_dof);
 
   const int body_dim = 4;
+  ref_pos_xyz_matrix_.resize(seq_size_, 3);
   ref_body_pos_w_matrix_.resize(seq_size_, body_dim);
 
   for (int k = 0; k < seq_size_; ++k) {
     YAML::Node row_pos  = ref_joint_pos[k];
     YAML::Node row_vel  = ref_joint_vel[k];
-    YAML::Node row_body = ref_body_pos_w[k];
+    YAML::Node row_pos_xyz = ref_pos_xyz[k];
+    YAML::Node row_quat_xyzw = ref_quat_xyzw[k];
 
     if (!row_pos.IsSequence() || (int)row_pos.size() != tienkung_pro_dof) return false;
     if (!row_vel.IsSequence() || (int)row_vel.size() != tienkung_pro_dof) return false;
-    if (!row_body.IsSequence() || (int)row_body.size() != body_dim) return false;
+    if (!row_pos_xyz.IsSequence() || (int)row_pos_xyz.size() != 3) return false;
+    if (!row_quat_xyzw.IsSequence() || (int)row_quat_xyzw.size() != body_dim) return false;
 
     for (int j = 0; j < tienkung_pro_dof; ++j) {
       ref_joint_pos_matrix_(k, j) = row_pos[j].as<double>();
       ref_joint_vel_matrix_(k, j) = row_vel[j].as<double>();
     }
-    for (int j = 0; j < body_dim; ++j) {
-      ref_body_pos_w_matrix_(k, j) = row_body[j].as<double>();
+    for (int j = 0; j < 3; ++j) {
+      ref_pos_xyz_matrix_(k, j) = row_pos_xyz[j].as<double>();
     }
+    // Convert xyzw -> wxyz for internal use.
+    ref_body_pos_w_matrix_(k, 0) = row_quat_xyzw[3].as<double>();
+    ref_body_pos_w_matrix_(k, 1) = row_quat_xyzw[0].as<double>();
+    ref_body_pos_w_matrix_(k, 2) = row_quat_xyzw[1].as<double>();
+    ref_body_pos_w_matrix_(k, 3) = row_quat_xyzw[2].as<double>();
   }
   loaded_ = true;
   return true;
@@ -114,6 +124,7 @@ ReferenceMotion::Output ReferenceMotion::Run() {
   // 범위 클램프 (또는 loop 처리)
   out.joint_pos  = ref_joint_pos_matrix_.row(current_frame_).transpose();
   out.joint_vel  = ref_joint_vel_matrix_.row(current_frame_).transpose();
+  out.ref_pos_xyz = ref_pos_xyz_matrix_.row(current_frame_).transpose();
   out.body_pos_w = ref_body_pos_w_matrix_.row(current_frame_).transpose();
 
   if (current_frame_ < seq_size_ - 1) {
@@ -126,6 +137,7 @@ ReferenceMotion::Output ReferenceMotion::SpecificRun(int motion_time) const {
   if (!loaded_ || seq_size_ <= 0) return out;
   out.joint_pos  = ref_joint_pos_matrix_.row(motion_time).transpose();
   out.joint_vel  = ref_joint_vel_matrix_.row(motion_time).transpose();
+  out.ref_pos_xyz = ref_pos_xyz_matrix_.row(motion_time).transpose();
   out.body_pos_w = ref_body_pos_w_matrix_.row(motion_time).transpose();
   return out;
 }
@@ -307,6 +319,19 @@ void StateMLP::OnEnter() {
   last_action_dot_d.setZero();
   input_data_mlp.setZero();
   run2walk = false;
+
+  // Initialize Pinocchio model once for kinematics use in Run().
+  if (pinocchio_model.nq == 0) {
+    try {
+      std::string package_path = ament_index_cpp::get_package_share_directory("rl_control_new");
+      std::string urdf_path = package_path + "/config/urdf_folder/urdf/tiangong2.0_pro_urdf.urdf";
+      pinocchio::urdf::buildModel(urdf_path, pinocchio::JointModelFreeFlyer(), pinocchio_model);
+      pinocchio_robot_data = pinocchio::Data(pinocchio_model);
+      std::cout << "[Pinocchio] model loaded: nq=" << pinocchio_model.nq << std::endl;
+    } catch (const std::exception& e) {
+      std::cerr << "[Pinocchio] failed to load URDF: " << e.what() << std::endl;
+    }
+  }
 }
 
 
@@ -327,14 +352,26 @@ void StateMLP::Run(xbox_flag &flag) {
 // motion_command -> joint_pos [0-29]
 // current_obs_buffer_dict["motion_command"] = self.motion_command_t
   if ((int) (timer / dt_) % freq_ratio_ == 0) {
-    auto refer_motion = g_ref_motion.Run();
+    refer_motion = g_ref_motion.Run();
+  }
+
+  // Guard against missing or malformed reference motion.
+  if (refer_motion.joint_pos.size() < joint_num_ ||
+      refer_motion.joint_vel.size() < joint_num_ ||
+      refer_motion.body_pos_w.size() < 4) {
+    static bool warned_once = false;
+    if (!warned_once) {
+      std::cerr << "[MLP] reference_motion not loaded or size mismatch." << std::endl;
+      warned_once = true;
+    }
+    return;
   }
 
   for (int i = 0; i < joint_num_; i++) {
-    input_vec[i] = (float)refer_motion.joint_pos(7 + i); // 0~29
+    input_vec[i] = (float)refer_motion.joint_pos(i); // 0~29
   }
   for (int i = 0; i < joint_num_; i++) {
-    input_vec[29 + i] = (float)refer_motion.joint_vel(6 + i); // 30~59 
+    input_vec[29 + i] = (float)refer_motion.joint_vel(i); // 30~59 
   }
 
   Eigen::Vector4d motion_ref_ori_1 = refer_motion.body_pos_w; // wxyz
@@ -446,6 +483,15 @@ void StateMLP::Run(xbox_flag &flag) {
     }
   }
   Eigen::VectorXd mlp_out = output_data_mlp.head(action_num);
+  if (action_num >= 6 && ((int)(timer / dt_) % 400 == 0)) {
+    std::cout << "[MLP] out[0..5]="
+              << mlp_out(0) << ", "
+              << mlp_out(1) << ", "
+              << mlp_out(2) << ", "
+              << mlp_out(3) << ", "
+              << mlp_out(4) << ", "
+              << mlp_out(5) << std::endl;
+  }
   Eigen::VectorXd mlp_out_reordered = Eigen::VectorXd::Zero(action_num);
   for (int i = 0; i < action_num; ++i) {
     mlp_out_reordered(i) = mlp_out(isaac_to_mujoco_idx[i]);
@@ -472,3 +518,60 @@ void StateMLP::Run(xbox_flag &flag) {
   robot_data_->q_d_.segment(0, 3) = Rb_w.transpose() * robot_data_->q_d_.segment(0, 3);
 }
 
+FSMStateName StateMLP::CheckTransition(const xbox_flag &flag) {
+  if (flag.fsm_state_command == "gotoZero") {
+    std::cout << "MLP2Zero" << std::endl;
+    return FSMStateName::ZERO;
+  } else if (flag.fsm_state_command == "gotoStop") {
+    std::cout << "MLP2Stop" << std::endl;
+    return FSMStateName::STOP;
+  }
+  return FSMStateName::MLP;
+}
+
+void StateMLP::OnExit() {
+  // Reset flags so the next MLP entry starts cleanly.
+  first_Run = true;
+  timer = 0.0;
+}
+
+// -----------------------------------------------------------------------------
+// STOP STATE
+// Holds current posture and waits for a transition command.
+// -----------------------------------------------------------------------------
+StateStop::StateStop(RobotData *robot_data) : FSMState(robot_data) {
+  robot_data_ = robot_data;
+  current_state_name_ = FSMStateName::STOP;
+}
+
+void StateStop::OnEnter() {
+  timer = 0.0;
+  first_run = true;
+}
+
+void StateStop::Run(xbox_flag &flag) {
+  (void)flag;
+  if (first_run) {
+    init_joint_pos = robot_data_->q_a_.tail(joint_num_);
+    first_run = false;
+  }
+
+  robot_data_->q_d_.tail(joint_num_) = init_joint_pos;
+  robot_data_->q_dot_d_.tail(joint_num_).setZero();
+  robot_data_->tau_d_.setZero();
+  robot_data_->pos_mode_ = true;
+
+  timer += dt_;
+}
+
+FSMStateName StateStop::CheckTransition(const xbox_flag &flag) {
+  if (flag.fsm_state_command == "gotoZero") {
+    std::cout << "Stop2Zero" << std::endl;
+    return FSMStateName::ZERO;
+  }
+  return FSMStateName::STOP;
+}
+
+void StateStop::OnExit() {
+  first_run = false;
+}

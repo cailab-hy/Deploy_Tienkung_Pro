@@ -185,6 +185,7 @@ private:
     funcSPTrans *funS2P;            // Series-parallel conversion function object
     float pi;                       // PI)
     bool simulation;                // Whether in simulation mode
+    bool dry_run = false;           // If true, skip publishing motor commands
 
     // message queues
     LockFreeQueue<bodyctrl_msgs::msg::MotorStatusMsg::SharedPtr> queueLegMotorState;

@@ -22,6 +22,7 @@ public:
   struct Output {
     Eigen::VectorXd joint_pos;
     Eigen::VectorXd joint_vel;
+    Eigen::VectorXd ref_pos_xyz;
     Eigen::VectorXd body_pos_w;
   };
 
@@ -36,6 +37,7 @@ private:
 
   Eigen::MatrixXd ref_joint_pos_matrix_;
   Eigen::MatrixXd ref_joint_vel_matrix_;
+  Eigen::MatrixXd ref_pos_xyz_matrix_;
   Eigen::MatrixXd ref_body_pos_w_matrix_;
 };
 
@@ -97,7 +99,7 @@ class StateMLP : public FSMState {
   double obs_scales_dof_pos = 1.0;
   double obs_scales_dof_vel = 1.0;
   double height_scales = 1.0;
-  double action_scales = 0.25;
+  double action_scales = 0.1;
 
   bool first_Run = true;
   Eigen::VectorXd baseLinVel_Est = Eigen::VectorXd::Zero(3);

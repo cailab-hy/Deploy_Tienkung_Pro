@@ -54,9 +54,10 @@ joystick:
   rotation_command_offset: 0.0
 
 simulation: false # 是否在仿真环境下运行 (Whether to run in simulation environment)
+dry_run: true      # Dry run: if true, skip publishing motor commands
 
 mlp:
-  path: /config/policy/policy
+  path: /config/policy_omni/omni_movebox_actions
 
 reference_motion:
   motion_path: /config/refer.yaml
