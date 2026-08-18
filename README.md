@@ -35,8 +35,7 @@ Deploy_Tienkung_Pro/
 ├── rl_control_new/          # 로봇 하드웨어 제어 (400Hz PD 제어, 센서 중계)
 │   ├── config/tg30_config.yaml
 │   └── launch/rl.launch.py
-├── x_humanoid_rl_sdk/       # 로봇 제어 SDK (FSM, 로봇 인터페이스)
-└── README_hdmi.md           # 학습 저장소(HDMI_Tienkung_Pro) 사용법 문서
+└── x_humanoid_rl_sdk/       # 로봇 제어 SDK (FSM, 로봇 인터페이스)
 ```
 
 | 패키지 | 역할 | 주기 |
@@ -260,7 +259,7 @@ STAND1 ──(B 버튼)──▶ PICKANDPLACE ──(1사이클 완료 시 자�
 학습 저장소에서 export한 정책 파일 세트를 config 폴더에 넣고 노드 코드에서 지정합니다.
 
 1. 학습 저장소(HDMI_Tienkung_Pro)에서 `play.py ... export_policy=true`로 ONNX export
-   (자세한 방법은 [README_hdmi.md](./README_hdmi.md) 참조)
+   (자세한 방법은 [학습 저장소](https://github.com/cailab-hy/HDMI_Tienkung_Pro) README 참조)
 2. 정책 폴더 구성 — 4개 파일 세트가 필요합니다:
 
    ```
@@ -306,7 +305,7 @@ STAND1 ──(B 버튼)──▶ PICKANDPLACE ──(1사이클 완료 시 자�
 
 ## 관련 문서
 
-- [README_hdmi.md](./README_hdmi.md) — 학습 저장소(HDMI_Tienkung_Pro) 설치 / 학습 / 평가 / ONNX export 가이드
+- [HDMI_Tienkung_Pro](https://github.com/cailab-hy/HDMI_Tienkung_Pro) — 학습 저장소: 설치 / 학습 / 평가 / ONNX export 가이드
 - [rl_control_new/README_HDMI.md](./rl_control_new/README_HDMI.md) — 2-머신 아키텍처, 토픽 포맷, 관절 매핑 상세
 - [rl_control_new/README.md](./rl_control_new/README.md) — rl_control_new 패키지 문서 (벤더 원본)
 - [x_humanoid_rl_sdk/README.md](./x_humanoid_rl_sdk/README.md) — 로봇 SDK 문서 (벤더 원본)
