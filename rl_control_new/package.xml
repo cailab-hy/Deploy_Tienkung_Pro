@@ -28,7 +28,7 @@
   <depend>eigen3_cmake_module</depend>
   <depend>yaml-cpp</depend>
   <depend>ament_index_cpp</depend>
-  <depend>x_humanoid_rl_sdk</depend>
+  <depend>rclcpp_components</depend>
 
   <!-- Test dependencies -->
   <test_depend>ament_lint_auto</test_depend>

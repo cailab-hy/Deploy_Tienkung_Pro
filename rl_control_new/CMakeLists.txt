@@ -52,25 +52,17 @@ include_directories(
   src/plugins/rl_control_new/include
   src/plugins/p2s/include
   src/plugins/JoyStick/include
-  src/plugins/x_humanoid_rl_sdk/include
-  src/plugins/x_humanoid_rl_sdk/include/robot_interface
-  src/plugins/x_humanoid_rl_sdk/include/robot_FSM
   ${EIGEN3_INCLUDE_DIR}
 )
 
 link_directories("/usr/local/lib")
-include_directories("/usr/local/include")
 link_directories("/usr/lib")
-include_directories("/usr/include")
 
 find_package(Eigen3 3.0.0 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
 include_directories(src/common/)
 
 # Link directories
-link_directories(
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/plugins/x_humanoid_rl_sdk/lib
-)
 link_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/src/plugins/p2s/lib
 )
@@ -88,9 +80,7 @@ target_link_libraries(rlctrlnew_plugin
   spdlog::spdlog
   fmt::fmt
   ${YAML_CPP_LIBRARIES}
-  x_humanoid_rl_sdk
   funcSPTrans
-
 )
 
 # Check if fast_ros library exists and link if available
@@ -143,14 +133,6 @@ install(DIRECTORY config/
 install(FILES rlctrlnew_plugin.xml
   DESTINATION share/${PROJECT_NAME}
 )
-
-# Collect and install x_humanoid_rl_sdk library files
-file(GLOB XHS_LIBS ${CMAKE_CURRENT_SOURCE_DIR}/src/plugins/x_humanoid_rl_sdk/lib/*)
-if(XHS_LIBS)
-  install(FILES ${XHS_LIBS}
-    DESTINATION lib
-  )
-endif()
 
 # Collect and install p2s library files
 file(GLOB P2S_LIBS ${CMAKE_CURRENT_SOURCE_DIR}/src/plugins/p2s/lib/*)

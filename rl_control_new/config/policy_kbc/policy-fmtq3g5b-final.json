@@ -1,0 +1,59 @@
+{
+    "in_keys": [
+        "command",
+        "policy",
+        "depth"
+    ],
+    "out_keys": [
+        "command",
+        "policy",
+        "depth",
+        [
+            "next",
+            "policy_ood_ratio"
+        ],
+        [
+            "next",
+            "command_ood_ratio"
+        ],
+        [
+            "next",
+            "depth_ood_ratio"
+        ],
+        [
+            "next",
+            "policy"
+        ],
+        [
+            "next",
+            "command"
+        ],
+        [
+            "next",
+            "depth"
+        ],
+        "sample_log_prob",
+        "action",
+        "loc",
+        "scale",
+        "priv_est"
+    ],
+    "in_shapes": [
+        [
+            [
+                1,
+                376
+            ],
+            [
+                1,
+                276
+            ],
+            [
+                1,
+                1,
+                120,
+                160
+            ]
+        ]
+    ]
+}

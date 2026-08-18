@@ -17,13 +17,13 @@
 #include <bodyctrl_msgs/msg/cmd_motor_ctrl.hpp>
 #include <bodyctrl_msgs/msg/motor_name.hpp>
 #include <sensor_msgs/msg/joy.hpp>
-#include <std_msgs/msg/float32.hpp>
 
 #include <thread>
+#include <mutex>
+#include <chrono>
 #include <Eigen/Dense>
+#include <std_msgs/msg/float64_multi_array.hpp>
 #include "util/LockFreeQueue.h"
-#include "robot_interface/RobotInterface.h"
-#include "robot_FSM/RobotFSM.h"
 #include "Joystick.h"
 #include "bodyIdMap.h"
 #include <yaml-cpp/yaml.h>
@@ -111,6 +111,16 @@ private:
      */
     void printXboxFlag(const xbox_flag& flag);
 
+    /**
+     * @brief Action callback from Orin
+     */
+    void ActionCallback(const std_msgs::msg::Float64MultiArray::SharedPtr msg);
+
+    /**
+     * @brief PD gains callback from Orin
+     */
+    void PdGainsCallback(const std_msgs::msg::Float64MultiArray::SharedPtr msg);
+
     // subscribers
     rclcpp::Subscription<bodyctrl_msgs::msg::MotorStatusMsg>::SharedPtr subLegState;
     rclcpp::Subscription<bodyctrl_msgs::msg::MotorStatusMsg>::SharedPtr subArmState;
@@ -118,6 +128,8 @@ private:
     rclcpp::Subscription<bodyctrl_msgs::msg::MotorStatusMsg>::SharedPtr subWaistState;
     rclcpp::Subscription<bodyctrl_msgs::msg::Imu>::SharedPtr subImuXsens;
     rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr subJoyCmd;
+    rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr sub_action_;
+    rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr sub_pd_gains_;
 
     // publishers
     rclcpp::Publisher<bodyctrl_msgs::msg::CmdMotorCtrl>::SharedPtr pubLegMotorCmd;
@@ -194,8 +206,28 @@ private:
     LockFreeQueue<bodyctrl_msgs::msg::Imu::SharedPtr> queueImuXsens;
     LockFreeQueue<sensor_msgs::msg::Joy::SharedPtr> queueJoyCmd;
 
-    // robot data 
-    RobotData robot_data;
+    // Orin communication
+    rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr pub_sensor_state_;
+
+    // Joint order mapping arrays (from HdmiPolicyRunner)
+    static const int HW_TO_ISAAC[30];
+    static const int ISAAC_TO_HW[30];
+
+    // Latest action data from Orin
+    std::mutex action_mutex_;
+    Eigen::VectorXd orin_q_d_isaac_;
+    Eigen::VectorXd orin_qdot_d_isaac_;
+    Eigen::VectorXd orin_tor_d_isaac_;
+    int orin_fsm_state_ = 0;  // 0=STOP, 1=ZERO, 2=MLP
+    bool orin_disable_ = false;
+    bool orin_waist_reset_ = false;
+    bool action_received_ = false;
+    std::chrono::steady_clock::time_point last_action_time_;
+
+    // PD gains (local YAML fallback + Orin update)
+    Eigen::VectorXd kp_hw_;
+    Eigen::VectorXd kd_hw_;
+    bool pd_gains_received_ = false;
 
     // ID mapping
     bodyServoIdMap::BodyServoIdMap idMap;

@@ -43,7 +43,7 @@ public:
         return head == tail;
     }
 
-    void push(T& e)
+    void push(const T& e)
     {
         auto node = new Node();
         node->value = e;

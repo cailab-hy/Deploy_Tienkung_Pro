@@ -1,0 +1,22 @@
+# ROS2 / colcon build artifacts
+build/
+install/
+log/
+
+# PyTorch checkpoints (inference uses .onnx only)
+*.pt
+
+# Backup files
+*.bk
+*_bk
+*.bk_compressed
+*.compressed_bk
+*~
+*.orig
+
+# Claude Code settings (로컬 전용, 내부 접속 정보 포함)
+.claude/
+
+# Python
+__pycache__/
+*.pyc

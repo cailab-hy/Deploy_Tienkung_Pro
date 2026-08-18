@@ -1,0 +1,223 @@
+observation:
+  policy:
+    root_ang_vel_history:
+      history_steps:
+      - 0
+      noise_std: 0.05
+    projected_gravity_history:
+      history_steps:
+      - 0
+      noise_std: 0.05
+    joint_pos_history:
+      history_steps:
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+      - 8
+      noise_std: 0.015
+    prev_actions:
+      steps: 3
+  command:
+    ref_body_pos_future_local:
+      motion_duration_second: 9.74
+      motion_path: data/motion/tienkung_pro/carry_and_place_bread_box
+      future_steps: &id001
+      - 1
+      - 2
+      - 8
+      - 16
+      - 32
+      body_names: &id002
+      - pelvis
+      - body_yaw_link
+      - shoulder_pitch_l_link
+      - shoulder_pitch_r_link
+      - hip_pitch_l_link
+      - hip_pitch_r_link
+      - hip_yaw_l_link
+      - hip_yaw_r_link
+      - head_roll_link
+      - knee_pitch_l_link
+      - knee_pitch_r_link
+      - elbow_yaw_l_link
+      - elbow_yaw_r_link
+      - ankle_roll_l_link
+      - ankle_roll_r_link
+      - wrist_roll_l_link
+      - wrist_roll_r_link
+      joint_names: &id003
+      - body_yaw_joint
+      - hip_roll_l_joint
+      - hip_roll_r_joint
+      - head_yaw_joint
+      - shoulder_pitch_l_joint
+      - shoulder_pitch_r_joint
+      - hip_pitch_l_joint
+      - hip_pitch_r_joint
+      - head_pitch_joint
+      - shoulder_roll_l_joint
+      - shoulder_roll_r_joint
+      - hip_yaw_l_joint
+      - hip_yaw_r_joint
+      - head_roll_joint
+      - shoulder_yaw_l_joint
+      - shoulder_yaw_r_joint
+      - knee_pitch_l_joint
+      - knee_pitch_r_joint
+      - elbow_pitch_l_joint
+      - elbow_pitch_r_joint
+      - ankle_pitch_l_joint
+      - ankle_pitch_r_joint
+      - ankle_roll_l_joint
+      - ankle_roll_r_joint
+      root_body_name: pelvis
+    ref_joint_pos_future:
+      motion_duration_second: 9.74
+      motion_path: data/motion/tienkung_pro/carry_and_place_bread_box
+      future_steps: *id001
+      body_names: *id002
+      joint_names: *id003
+      root_body_name: pelvis
+    ref_motion_phase:
+      motion_duration_second: 9.74
+      motion_path: data/motion/tienkung_pro/carry_and_place_bread_box
+      future_steps: *id001
+      body_names: *id002
+      joint_names: *id003
+      root_body_name: pelvis
+  depth:
+    depth_camera:
+      camera_name: tiled_camera
+action_scale:
+  .*: 0.25
+isaac_joint_names:
+- body_yaw_joint
+- hip_roll_l_joint
+- hip_roll_r_joint
+- head_yaw_joint
+- shoulder_pitch_l_joint
+- shoulder_pitch_r_joint
+- hip_pitch_l_joint
+- hip_pitch_r_joint
+- head_pitch_joint
+- shoulder_roll_l_joint
+- shoulder_roll_r_joint
+- hip_yaw_l_joint
+- hip_yaw_r_joint
+- head_roll_joint
+- shoulder_yaw_l_joint
+- shoulder_yaw_r_joint
+- knee_pitch_l_joint
+- knee_pitch_r_joint
+- elbow_pitch_l_joint
+- elbow_pitch_r_joint
+- ankle_pitch_l_joint
+- ankle_pitch_r_joint
+- elbow_yaw_l_joint
+- elbow_yaw_r_joint
+- ankle_roll_l_joint
+- ankle_roll_r_joint
+- wrist_pitch_l_joint
+- wrist_pitch_r_joint
+- wrist_roll_l_joint
+- wrist_roll_r_joint
+joint_kp:
+  hip_roll_.*_joint: 700
+  hip_pitch_.*_joint: 700
+  hip_yaw_.*_joint: 500
+  knee_pitch_.*_joint: 700
+  ankle_pitch_.*_joint: 30
+  ankle_roll_.*_joint: 16.8
+  shoulder_pitch_.*_joint: 60
+  shoulder_roll_.*_joint: 20
+  shoulder_yaw_.*_joint: 10
+  elbow_pitch_.*_joint: 10
+  wrist_pitch_.*_joint: 8
+  wrist_roll_.*_joint: 8
+  elbow_yaw_.*_joint: 15
+  body_yaw_joint: 20
+  head_yaw_joint: 10
+  head_pitch_joint: 10
+  head_roll_joint: 10
+joint_kd:
+  hip_roll_.*_joint: 10
+  hip_pitch_.*_joint: 10
+  hip_yaw_.*_joint: 5
+  knee_pitch_.*_joint: 10
+  ankle_pitch_.*_joint: 2.5
+  ankle_roll_.*_joint: 1.4
+  shoulder_pitch_.*_joint: 3
+  shoulder_roll_.*_joint: 1.5
+  shoulder_yaw_.*_joint: 1
+  elbow_pitch_.*_joint: 1
+  wrist_pitch_.*_joint: 0.5
+  wrist_roll_.*_joint: 0.5
+  elbow_yaw_.*_joint: 1
+  body_yaw_joint: 1
+  head_yaw_joint: 0.5
+  head_pitch_joint: 0.5
+  head_roll_joint: 0.5
+default_joint_pos:
+  body_yaw_joint: 0.0
+  hip_roll_l_joint: 0.0
+  hip_roll_r_joint: 0.0
+  head_yaw_joint: 0.0
+  shoulder_pitch_l_joint: 0.0
+  shoulder_pitch_r_joint: 0.0
+  hip_pitch_l_joint: -0.5
+  hip_pitch_r_joint: -0.5
+  head_pitch_joint: 0.0
+  shoulder_roll_l_joint: 0.1
+  shoulder_roll_r_joint: -0.1
+  hip_yaw_l_joint: 0.0
+  hip_yaw_r_joint: 0.0
+  head_roll_joint: 0.0
+  shoulder_yaw_l_joint: -0.3
+  shoulder_yaw_r_joint: -0.3
+  knee_pitch_l_joint: 1.0
+  knee_pitch_r_joint: 1.0
+  elbow_pitch_l_joint: 0.0
+  elbow_pitch_r_joint: 0.0
+  ankle_pitch_l_joint: -0.5
+  ankle_pitch_r_joint: -0.5
+  elbow_yaw_l_joint: 0.0
+  elbow_yaw_r_joint: 0.0
+  ankle_roll_l_joint: 0.0
+  ankle_roll_r_joint: 0.0
+  wrist_pitch_l_joint: 0.0
+  wrist_pitch_r_joint: 0.0
+  wrist_roll_l_joint: 0.0
+  wrist_roll_r_joint: 0.0
+policy_joint_names:
+- body_yaw_joint
+- hip_roll_l_joint
+- hip_roll_r_joint
+- head_yaw_joint
+- shoulder_pitch_l_joint
+- shoulder_pitch_r_joint
+- hip_pitch_l_joint
+- hip_pitch_r_joint
+- head_pitch_joint
+- shoulder_roll_l_joint
+- shoulder_roll_r_joint
+- hip_yaw_l_joint
+- hip_yaw_r_joint
+- head_roll_joint
+- shoulder_yaw_l_joint
+- shoulder_yaw_r_joint
+- knee_pitch_l_joint
+- knee_pitch_r_joint
+- elbow_pitch_l_joint
+- elbow_pitch_r_joint
+- ankle_pitch_l_joint
+- ankle_pitch_r_joint
+- elbow_yaw_l_joint
+- elbow_yaw_r_joint
+- ankle_roll_l_joint
+- ankle_roll_r_joint
+- wrist_pitch_l_joint
+- wrist_pitch_r_joint
+- wrist_roll_l_joint
+- wrist_roll_r_joint

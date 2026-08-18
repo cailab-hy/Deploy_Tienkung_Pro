@@ -58,6 +58,7 @@ def generate_launch_description():
             'device': '/dev/input/js0',
             'use_sim_time': LaunchConfiguration('use_sim_time'),
         }],
+        remappings=[('/joy', '/sbus_data')],
         output='screen',
     )
 
