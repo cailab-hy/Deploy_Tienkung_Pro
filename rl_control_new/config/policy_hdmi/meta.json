@@ -24,6 +24,7 @@
     "elbow_yaw_l_link",
     "wrist_pitch_l_link",
     "wrist_roll_l_link",
+    "left_hand_link",
     "shoulder_pitch_r_link",
     "shoulder_roll_r_link",
     "shoulder_yaw_r_link",
@@ -31,7 +32,8 @@
     "elbow_yaw_r_link",
     "wrist_pitch_r_link",
     "wrist_roll_r_link",
-    "bread_box",
+    "right_hand_link",
+    "block",
     "support0",
     "support1"
   ],

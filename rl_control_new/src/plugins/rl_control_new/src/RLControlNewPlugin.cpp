@@ -206,7 +206,7 @@ void RLControlNewPlugin::onInit()
     kp_hw_ = Eigen::VectorXd::Zero(motor_num);
     kd_hw_ = Eigen::VectorXd::Zero(motor_num);
     {
-        std::string policy_yaml = pkg_path + "/config/policy_kbc/policy-fmtq3g5b-final.yaml";
+        std::string policy_yaml = pkg_path + "/config/policy_hdmi/policy-fmtq3g5b-final.yaml";
         try {
             YAML::Node policy_config = YAML::LoadFile(policy_yaml);
 

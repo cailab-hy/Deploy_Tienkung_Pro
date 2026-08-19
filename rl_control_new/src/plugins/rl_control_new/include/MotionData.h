@@ -17,7 +17,7 @@ public:
 
     /**
      * @brief Load motion data from directory containing motion.npz and meta.json
-     * @param motion_dir Path to directory (e.g. .../policy_kbc)
+     * @param motion_dir Path to directory (e.g. .../policy_hdmi)
      * @param motion_subpath Relative path to motion data within config (e.g. "data/motion/tienkung_pro/carry_and_place_bread_box")
      * @param isaac_joint_names Joint names in policy/isaac order (30 joints)
      * @param policy_body_names Body names used by policy (17 bodies)
