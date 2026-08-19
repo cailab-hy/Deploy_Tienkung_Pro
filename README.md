@@ -85,7 +85,7 @@ sudo ldconfig
 ```bash
 mkdir -p ~/tk_ws/src
 cd ~/tk_ws/src
-git cloen hhtps://github.com/cailab-hy/big_wave_Deploy.git
+git clone https://github.com/cailab-hy/big_wave_Deploy.git
 ```
 
 ### 2.2.3 ROS2 빌드
