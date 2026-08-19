@@ -4,9 +4,16 @@ Tienkung Pro 휴머노이드 로봇에 HDMI 프레임워크(IsaacLab + PyTorch)�
 IsaacLab에서 학습된 정책(ONNX)을 실제 로봇에서 50Hz로 추론하고, 400Hz PD 제어로 모터를 구동합니다.
 
 
-- **Data Transform repo**: [big_wave_GMR](https://github.com/cailab-hy/big_wave_GMR) — 참조 모션 파일
-- **Train repo**: [big_wave_HDMI](https://github.com/cailab-hy/big_wave_HDMI) — 정책 학습 / 평가 / ONNX export
-- **Deploy repo**: [big_wave_Deloy](https://github.com/cailab-hy/big_wave_Deploy) — Sim-to-Real 
+전체 프로젝트의 마지막 단계입니다.
+
+1. [Kimodo](https://github.com/nv-tlabs/kimodo)               (Motion Generation)
+ 
+2. [big_wave_GMR](https://github.com/cailab-hy/big_wave_GMR)     (Motion Retargeting)   
+      
+3. [big_wave_HDMI](https://github.com/cailab-hy/big_wave_HDMI)    (Policy Training)
+      
+4. [big_wave_Deploy](https://github.com/cailab-hy/big_wave_Deploy)  (Real Robot Deployment)  ← You are here
+
 
 ---
 
